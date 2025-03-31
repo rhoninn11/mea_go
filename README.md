@@ -3,4 +3,4 @@
 - web apps
 - services
 - clis
-- wasm?
+- wasm - as an alternative for js? [blog](https://golangbot.com/go-webassembly-dom-access/)
