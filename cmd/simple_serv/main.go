@@ -21,7 +21,7 @@ var lastUsage = 0
 type RespWriter = http.ResponseWriter
 type Req = http.Request
 
-func ApiHandler(w RespWriter, r *Req) {
+func fnHandler(w RespWriter, r *Req) {
 	dir := mojUkladOdniesienia[keys[lastUsage]]
 	msg := dir.LatentVector
 
@@ -31,15 +31,27 @@ func ApiHandler(w RespWriter, r *Req) {
 	if lastUsage == len(keys) {
 		lastUsage = 0
 	}
-	fmt.Println("+++ request handled")
+	fmt.Println(spf("+++ last idx: %d", lastUsage))
+}
+
+func spf(format string, a ...any) string {
+	var temp = fmt.Sprintf(format, a...)
+	// fmt.Println("+++Debug: ", temp)
+	return temp
 }
 
 func main() {
 	// for _, key := range keys {
 	// 	fmt.Println(mojUkladOdniesienia[key])
 	// }
+	const host = "localhost"
+	const port = 8080
+	var base = spf("%s:%d", host, port) // eg localhost:8080
 
-	http.HandleFunc("/axis", ApiHandler)
-	fmt.Println("+++ niby wystartowałem api, api route:\n http://localhost:8000/axis")
-	http.ListenAndServe("localhost:8080", nil)
+	const fnName = "axis"
+	http.HandleFunc(spf("/%s", fnName), fnHandler)
+
+	var url = spf("http://%s/%s", base, fnName)
+	fmt.Printf("+++ niby wystartowałem api, api route: \n%s\n", url)
+	http.ListenAndServe(base, nil)
 }
