@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -33,20 +34,40 @@ func allFiles(pref string, ext string) []string {
 	return files
 }
 
-func sysCmd(argv []string) {
-
-	run := exec.Command(argv[0], argv[1:]...)
-	fmt.Println(run.Output())
+func sysCmd(args []string) []byte {
+	fmt.Println(args)
+	run := exec.Command(args[0], args[1:]...)
+	// run := exec.Command("protoc", "-h")
+	out, err := run.Output()
+	if err != nil {
+		fmt.Print(out)
+		log.Fatal(err.Error())
+	}
+	return out
 }
 
+// eg.: protoc --go_out=./api  --go-grpc_out=./api  ./api/proto/comfy.proto
 func genGoFor(inProto string) {
-	const gOut = "api/gen"
-	sysCmd([]string{
-		"protoc",
-		spf("--go_out=%s ", gOut),
-		spf("--go-grpc_out=%s ", gOut),
+	goPathCmd := []string{
+		"go",
+		"env",
+		"GOPATH",
+	}
+	goPath := string(sysCmd(goPathCmd))
+	goPath = goPath[:len(goPath)-1]
+	typesPlug := spf("--plugin=%s/bin/protoc-gen-go", goPath)
+	servicePlug := spf("--plugin=%s/bin/protoc-gen-go-grpc", goPath)
+	fmt.Println(typesPlug)
+	fmt.Println(servicePlug)
+	protoCompilation := []string{
+		"protoc", typesPlug, servicePlug,
+		"--go_out=./api",
+		"--go-grpc_out=./api",
 		inProto,
-	})
+	}
+
+	_ = sysCmd(protoCompilation)
+	fmt.Printf("+++ %s compiled\n", inProto)
 }
 
 func join(dir string, file string) string {
@@ -54,8 +75,7 @@ func join(dir string, file string) string {
 }
 
 func main() {
-	// cmd := "protoc"
-	protoPrefix := "api/proto"
+	protoPrefix := "./api/proto"
 	protos := allFiles(protoPrefix, ".proto")
 
 	for _, fname := range protos {

@@ -1,2 +1,2 @@
 tmp
-api/gen/*
+api/*.gen.d
