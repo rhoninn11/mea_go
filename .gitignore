@@ -1,2 +1,3 @@
 tmp
 api/*.gen.d
+*_templ.go

@@ -1,0 +1,29 @@
+package components
+
+// export PATH="$PATH:$(go env GOPATH)/bin"
+templ Global(name string, body templ.Component) {
+	<!DOCTYPE html>
+	<html>
+		<head>
+			<meta charset="UTF-8">
+			<meta name="author" content={ name }>
+			<title>Htmx experiments</title>
+		</head>
+		<body>
+			<h1>Response History: </h1>
+			@body
+		</body>
+	</html>
+}
+
+templ HistoryPrint(info string) {
+	<div>From template, { info }</div>
+}
+
+templ HistoryWhole(records []string) {
+	<div>
+		for _, a := range records {
+			@HistoryPrint(a)
+		}
+	</div>
+}

@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"mea_go/components"
 	"net/http"
 )
 
@@ -15,23 +17,47 @@ var mojUkladOdniesienia = map[string]Direction{
 	"y": Direction{LatentVector: "Askpekt dominujący tego czego szukam", Power: 0.5},
 	"z": Direction{LatentVector: "To takie moje oczko w głowie", Power: 0.2},
 }
-var keys = []string{"x", "y", "z"}
-var lastUsage = 0
+
+type State struct {
+	keys      []string
+	lastUsage int
+	history   []string
+}
+
+var globState State
+
+func init() {
+	globState = State{
+		keys:      []string{"x", "y", "z"},
+		lastUsage: 0,
+		history:   make([]string, 0, 16),
+	}
+}
 
 type RespWriter = http.ResponseWriter
 type Req = http.Request
 
-func fnHandler(w RespWriter, r *Req) {
-	dir := mojUkladOdniesienia[keys[lastUsage]]
-	msg := dir.LatentVector
+func (s *State) AxisFn(w RespWriter, r *Req) {
+	dir := mojUkladOdniesienia[s.keys[s.lastUsage]]
+	text := dir.LatentVector
 
 	w.Header().Set("Content-Type", "text/plain")
-	fmt.Fprintf(w, "%s", msg)
-	lastUsage += 1
-	if lastUsage == len(keys) {
-		lastUsage = 0
+	histNote := fmt.Sprintf("%s |może data|", text)
+	s.history = append(s.history, histNote)
+	fmt.Fprint(w, text)
+	s.lastUsage += 1
+	if s.lastUsage == len(s.keys) {
+		s.lastUsage = 0
 	}
-	fmt.Println(spf("+++ last idx: %d", lastUsage))
+	fmt.Println(spf("+++ last idx: %d", s.lastUsage))
+}
+
+func (s *State) HistoryFn(w RespWriter, r *Req) {
+	w.Header().Set("Content-Type", "text/html")
+	render := components.HistoryWhole(s.history)
+	render = components.Global("Adam Grzelak", render)
+	render.Render(context.Background(), w)
+
 }
 
 func spf(format string, a ...any) string {
@@ -48,8 +74,10 @@ func main() {
 	const port = 8080
 	var base = spf("%s:%d", host, port) // eg localhost:8080
 
-	const fnName = "axis"
-	http.HandleFunc(spf("/%s", fnName), fnHandler)
+	var fnName = "axis"
+	http.HandleFunc(spf("/%s", fnName), globState.AxisFn)
+	fnName = "history"
+	http.HandleFunc(spf("/%s", fnName), globState.HistoryFn)
 
 	var url = spf("http://%s/%s", base, fnName)
 	fmt.Printf("+++ niby wystartowałem api, api route: \n%s\n", url)
