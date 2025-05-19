@@ -1,3 +1,4 @@
 tmp
+fs
 api/*.gen.d
 *_templ.go

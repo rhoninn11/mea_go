@@ -3,39 +3,72 @@ package main
 import (
 	"context"
 	"fmt"
+	"image"
+	"image/color"
+	"image/png"
 	"log"
+	"os"
 
 	mea_gen_d "mea_go/api/mea.gen.d"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
-func main() {
-	todoMeassage := "TODO: here will be implemented client calling comfyui over grpc\n" +
-		"Maybe explor posibility of usage jsonrpc, or sending proto buffers over websocket"
-	fmt.Println(todoMeassage)
+func protoToGo(protoImg *mea_gen_d.Image) *image.RGBA {
+	w := int(protoImg.Info.Width)
+	h := int(protoImg.Info.Height)
+	total := w * h
+	goImg := image.NewRGBA(image.Rect(0, 0, w, h))
 
-	//TODO: parę zdjęć można by tu wygenerować
+	idxCalc := func(idx int) (int, int) {
+		y := idx / w
+		x := idx - w*y
+		return x, y
+	}
+	var y int
+	var x int
+	var pixel []byte
+	for i := range total {
+		rgb_idx := i * 3
+		pixel = protoImg.Pixels[rgb_idx : rgb_idx+3]
+		c := color.RGBA{
+			R: pixel[0],
+			G: pixel[1],
+			B: pixel[2],
+			A: 255,
+		}
+		x, y = idxCalc(i)
+		goImg.SetRGBA(x, y, c)
+	}
+	return goImg
+}
+
+func main() {
+	// TODO: As we connecting with commpressed comfy api
+	// we also consider retransimiting data over websocket,
+	// for other technoogies not supported by main protocol
+	// but at first it can be simple cli?! inpaint editor??
 
 	prompts := []string{
 		"warrior wakes up early morning, in his friend house after yesterdey's happy bonfire day:D",
 		"mage wakes up erlier so he can go fishing with uncle bob",
 	}
 
-	var opts []grpc.DialOption
+	// caFile := "assets/root.crt"
+	// credentials.NewClientTLSFromFile(caFile, "")
 
-	caFile := "assets/root.crt"
-	credentials.NewClientTLSFromFile(caFile, "")
-
+	// default gRPC???
 	const port = 50051
 	serv_address := fmt.Sprintf("0.0.0.0:%d", port)
-	conn, err := grpc.NewClient(serv_address, opts...)
+
+	var opts = grpc.WithTransportCredentials(insecure.NewCredentials())
+	conn, err := grpc.NewClient(serv_address, opts)
 	if err != nil {
-		log.Fatal(err.Error())
+		log.Fatal(fmt.Errorf("^at new client %w", err))
 	}
 
-	hmm := mea_gen_d.NewComfyClient(conn)
+	rpc_stub := mea_gen_d.NewComfyClient(conn)
 
 	a := mea_gen_d.Options{
 		Prompts:  prompts,
@@ -44,5 +77,23 @@ func main() {
 		InptFlag: mea_gen_d.InpaintType_SDXL,
 	}
 
-	hmm.SetOptions(context.Background(), &a)
+	rpc_stub.SetOptions(context.Background(), &a)
+	protoImg, err := rpc_stub.Txt2Img(context.Background(), &mea_gen_d.Empty{})
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	goImg := protoToGo(protoImg)
+
+	file, err := os.Create("fs/img.png")
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	err = png.Encode(file, goImg)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	file.Close()
+
+	_ = protoImg
 }
