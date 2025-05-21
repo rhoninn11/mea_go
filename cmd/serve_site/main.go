@@ -41,15 +41,17 @@ func (s *State) AxisFn(w RespWriter, r *Req) {
 	dir := mojUkladOdniesienia[s.keys[s.lastUsage]]
 	text := dir.LatentVector
 
-	w.Header().Set("Content-Type", "text/plain")
-	histNote := fmt.Sprintf("%s |może data|", text)
-	s.history = append(s.history, histNote)
-	fmt.Fprint(w, text)
+	w.Header().Set("Content-Type", "text/html")
+	historyNote := fmt.Sprintf("%s |może data|", text)
+	entry := components.Entry(historyNote)
+	glob := components.Global("Axis lottery:", entry)
+	glob.Render(r.Context(), w)
+
 	s.lastUsage += 1
+	s.history = append(s.history, historyNote)
 	if s.lastUsage == len(s.keys) {
 		s.lastUsage = 0
 	}
-	fmt.Println(spf("+++ last idx: %d", s.lastUsage))
 }
 
 func (s *State) HistoryFn(w RespWriter, r *Req) {
@@ -74,12 +76,10 @@ func main() {
 	const port = 8080
 	var base = spf("%s:%d", host, port) // eg localhost:8080
 
-	var fnName = "axis"
-	http.HandleFunc(spf("/%s", fnName), globState.AxisFn)
-	fnName = "history"
-	http.HandleFunc(spf("/%s", fnName), globState.HistoryFn)
+	http.HandleFunc("/axis", globState.AxisFn)
+	http.HandleFunc("/history", globState.HistoryFn)
 
-	var url = spf("http://%s/%s", base, fnName)
+	var url = spf("http://%s/%s", base, "history")
 	fmt.Printf("+++ niby wystartowałem api, api route: \n%s\n", url)
 	http.ListenAndServe(base, nil)
 }
