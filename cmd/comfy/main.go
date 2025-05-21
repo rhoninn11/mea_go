@@ -69,31 +69,36 @@ func main() {
 	}
 
 	rpc_stub := mea_gen_d.NewComfyClient(conn)
+	fmt.Println(prompts[1:])
 
 	a := mea_gen_d.Options{
-		Prompts:  prompts,
+		Prompts:  []string{""},
 		ImgPower: 1,
 		Seed:     0,
 		InptFlag: mea_gen_d.InpaintType_SDXL,
 	}
 
-	rpc_stub.SetOptions(context.Background(), &a)
-	protoImg, err := rpc_stub.Txt2Img(context.Background(), &mea_gen_d.Empty{})
-	if err != nil {
-		log.Fatal(err.Error())
-	}
+	for i := range len(prompts) {
+		a.Prompts = prompts[i : i+1]
+		rpc_stub.SetOptions(context.Background(), &a)
+		fmt.Println("+++ gen prompt: ", a.Prompts)
+		protoImg, err := rpc_stub.Txt2Img(context.Background(), &mea_gen_d.Empty{})
+		if err != nil {
+			log.Fatal(err.Error())
+		}
 
-	goImg := protoToGo(protoImg)
+		goImg := protoToGo(protoImg)
 
-	file, err := os.Create("fs/img.png")
-	if err != nil {
-		log.Fatal(err.Error())
+		pngFile := fmt.Sprintf("fs/img_%d.png", i)
+		file, err := os.Create(pngFile)
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+		err = png.Encode(file, goImg)
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+		file.Close()
+		fmt.Println("+++ image saved: ", pngFile)
 	}
-	err = png.Encode(file, goImg)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-	file.Close()
-
-	_ = protoImg
 }

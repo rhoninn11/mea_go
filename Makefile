@@ -3,7 +3,7 @@
 templ:
 	templ generate
 
-serve: templgen
+serve: templ
 	go run cmd/comfy/main.go
 
 dev:
