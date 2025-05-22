@@ -5,8 +5,13 @@ templ Global(name string, body templ.Component) {
 	<!DOCTYPE html>
 	<html>
 		<head>
+			<script src="https://unpkg.com/htmx.org@2.0.4" 
+				integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+"
+				crossorigin="anonymous">
+			</script>
 			<meta charset="UTF-8">
 			<meta name="author" content={ name }>
+			<link rel="stylesheet" href="/static/style.css">
 			<title>{name}</title>
 		</head>
 		<body>
@@ -16,9 +21,30 @@ templ Global(name string, body templ.Component) {
 	</html>
 }
 
-templ Block() {
-	<div class="size-10 border-solid border-8"></div>
+templ Block(num int) {
+	<div class="size-10 border-solid border-8 bg-slate-500">{num}</div>
 }
+
+templ SectionWithLoading() {
+	<div class="flex flex-col">
+	<h2>HTMX loading demo</h2>
+	<button hx-get="/loading" hx-target="#loading-bar">
+		Loading init
+	</button>
+	<div id="loading-bar"
+		class="flex bg-slate-300"> 
+		well for "dynamic" progress using server-events
+		we need extesnion for htmx... so for now meaby just
+		use some gif indicator
+	</div>
+	</div>
+}
+
+templ LoadingBar(len int) {
+	for i := range len {
+		@Block(i)
+	}
+} 
 
 templ Entry(text string) {
 	<div>
@@ -29,7 +55,7 @@ templ Entry(text string) {
 templ HistoryPrint(info string) {
 	<div >
 		From template, { info }
-		@Block()
+		@Block(0)
 	 </div>
 }
 
