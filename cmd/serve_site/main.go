@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"mea_go/components"
 	"net/http"
 	"time"
@@ -35,13 +36,10 @@ func init() {
 	}
 }
 
-type RespWriter = http.ResponseWriter
-type Req = http.Request
-
 var htmlType = "text/html"
 var textStreamType = "text/event-stream"
 
-func (s *State) AxisFn(w RespWriter, r *Req) {
+func (s *State) AxisFn(w ResponseWriter, r *Request) {
 	dir := mojUkladOdniesienia[s.keys[s.lastUsage]]
 	text := dir.LatentVector
 
@@ -58,14 +56,14 @@ func (s *State) AxisFn(w RespWriter, r *Req) {
 	}
 }
 
-func (s *State) HistoryFn(w RespWriter, r *Req) {
+func (s *State) HistoryFn(w ResponseWriter, r *Request) {
 	w.Header().Set("Content-Type", htmlType)
 	render := components.HistoryWhole(s.history)
 	render = components.Global("Adam Grzelak", render)
 	render.Render(context.Background(), w)
 }
 
-func (s *State) LoadingPage(w RespWriter, r *Req) {
+func (s *State) LoadingPage(w ResponseWriter, r *Request) {
 
 	w.Header().Set("Content-Type", htmlType)
 	render := components.SectionWithLoading()
@@ -73,7 +71,37 @@ func (s *State) LoadingPage(w RespWriter, r *Req) {
 	render.Render(context.Background(), w)
 }
 
-func loading(w RespWriter, r *Req) {
+func (s *State) GeneratePage(w ResponseWriter, r *Request) {
+	w.Header().Set("Content-Type", htmlType)
+	render := components.PromptPad()
+	render = components.Global("Loading Page", render)
+	render.Render(context.Background(), w)
+}
+
+func (s *State) RecivePrompt(w ResponseWriter, r *Request) {
+	fmt.Println("+++wywołano well")
+
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusBadRequest)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		log.Fatal("empty form")
+	}
+
+	form := r.Form
+	fmt.Printf("+++ form len: %d\n", len(form))
+	for k, v := range form {
+		fmt.Println("+++", k, v)
+	}
+
+	w.Header().Set("Content-Type", htmlType)
+	render := components.Block(0)
+	render.Render(context.Background(), w)
+}
+
+func loading(w ResponseWriter, r *Request) {
 	w.Header().Set("Content-Type", textStreamType) // but i hope html can be pushed fine😅
 	for i := range 10 {
 		render := components.Block(i)
@@ -89,6 +117,17 @@ func spf(format string, a ...any) string {
 	return temp
 }
 
+var registredEndpoints = make([]string, 0, 16)
+
+type ResponseWriter = http.ResponseWriter
+type Request = http.Request
+type HttpFuncSignature = func(ResponseWriter, *Request)
+
+func httpHandleFunc(endpoint string, fn HttpFuncSignature) {
+	registredEndpoints = append(registredEndpoints, endpoint)
+	http.HandleFunc(endpoint, fn)
+}
+
 func main() {
 	// for _, key := range keys {
 	// 	fmt.Println(mojUkladOdniesienia[key])
@@ -98,12 +137,17 @@ func main() {
 	var base = spf("%s:%d", host, port) // eg localhost:8080
 
 	static := http.FileServer(http.Dir("./static/"))
+
+	// TODO: for static files rebuild in development would be nice to set
+	// cache-control header to no cache somehow in dev mode
 	http.Handle("/static/", http.StripPrefix("/static/", static))
 
-	http.HandleFunc("/axis", globState.AxisFn)
-	http.HandleFunc("/history", globState.HistoryFn)
-	http.HandleFunc("/loading", loading)
-	http.HandleFunc("/page/loading", globState.LoadingPage)
+	httpHandleFunc("/axis", globState.AxisFn)
+	httpHandleFunc("/history", globState.HistoryFn)
+	httpHandleFunc("/loading", loading)
+	httpHandleFunc("/page/loading", globState.LoadingPage)
+	httpHandleFunc("/page/gen", globState.GeneratePage)
+	httpHandleFunc("/well", globState.RecivePrompt)
 
 	var url = spf("http://%s/%s", base, "history")
 	fmt.Printf("+++ niby wystartowałem api, api route: \n%s\n", url)

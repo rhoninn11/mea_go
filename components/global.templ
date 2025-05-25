@@ -45,6 +45,12 @@ templ LoadingBar(len int) {
 		@Block(i)
 	}
 } 
+templ PromptPad() {
+	<div class="flex flex-col bg-lime-500">
+		PromptPad
+	<textarea name="textarea_prompt" class="w-4/12 h-20" hx-post="/well"></textarea>
+	</div>
+}
 
 templ Entry(text string) {
 	<div>
