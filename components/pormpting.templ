@@ -1,0 +1,12 @@
+package components
+
+templ PromptPad(id string){
+    <div class="flex flex-col m-2 bg-slate-600 p-4">
+        aaaa bo ty nie ma taga z biblioteeeeką
+        <textarea class="bg-slate-400" name="prompt" hx-post="/prompt"></textarea>
+    </div>
+}
+
+templ NoIdPromptPad(){
+    @PromptPad("0")
+}

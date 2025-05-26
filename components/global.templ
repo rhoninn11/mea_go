@@ -40,18 +40,22 @@ templ SectionWithLoading() {
 	</div>
 }
 
-templ LoadingBar(len int) {
-	for i := range len {
-		@Block(i)
-	}
-} 
-templ PromptPad() {
-	<div class="flex flex-col bg-lime-500">
-		PromptPad
-	<textarea name="textarea_prompt" class="w-4/12 h-20" hx-post="/well"></textarea>
+templ TwoTabs(sideData templ.Component, mainContent templ.Component) {
+	<div class="flex">
+		<div class="w-1/4">@sideData</div>
+		<div class="w-3/4">@mainContent</div>
 	</div>
+
 }
 
+templ SideLinks(links []templ.SafeURL){
+	<div class="flex flex-col p-2">
+		for _, asText := range links {
+			<a class="bg-slate-400"
+			href={asText}>{asText}</a>
+		}
+	</div>
+}
 templ Entry(text string) {
 	<div>
 		{text}

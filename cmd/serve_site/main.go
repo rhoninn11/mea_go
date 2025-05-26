@@ -7,6 +7,8 @@ import (
 	"mea_go/components"
 	"net/http"
 	"time"
+
+	"github.com/a-h/templ"
 )
 
 type Direction struct {
@@ -39,6 +41,12 @@ func init() {
 var htmlType = "text/html"
 var textStreamType = "text/event-stream"
 
+func newGlobal(main templ.Component) templ.Component {
+	side := components.SideLinks(endpotins)
+	twoTabs := components.TwoTabs(side, main)
+	return components.Global("Tua editro", twoTabs)
+}
+
 func (s *State) AxisFn(w ResponseWriter, r *Request) {
 	dir := mojUkladOdniesienia[s.keys[s.lastUsage]]
 	text := dir.LatentVector
@@ -46,7 +54,7 @@ func (s *State) AxisFn(w ResponseWriter, r *Request) {
 	w.Header().Set("Content-Type", htmlType)
 	historyNote := fmt.Sprintf("%s |może data|", text)
 	entry := components.Entry(historyNote)
-	glob := components.Global("Axis lottery:", entry)
+	glob := newGlobal(entry)
 	glob.Render(r.Context(), w)
 
 	s.lastUsage += 1
@@ -58,9 +66,9 @@ func (s *State) AxisFn(w ResponseWriter, r *Request) {
 
 func (s *State) HistoryFn(w ResponseWriter, r *Request) {
 	w.Header().Set("Content-Type", htmlType)
-	render := components.HistoryWhole(s.history)
-	render = components.Global("Adam Grzelak", render)
-	render.Render(context.Background(), w)
+	history := components.HistoryWhole(s.history)
+	page := newGlobal(history)
+	page.Render(context.Background(), w)
 }
 
 func (s *State) LoadingPage(w ResponseWriter, r *Request) {
@@ -71,11 +79,12 @@ func (s *State) LoadingPage(w ResponseWriter, r *Request) {
 	render.Render(context.Background(), w)
 }
 
+// /page/gen
 func (s *State) GeneratePage(w ResponseWriter, r *Request) {
 	w.Header().Set("Content-Type", htmlType)
-	render := components.PromptPad()
-	render = components.Global("Loading Page", render)
-	render.Render(context.Background(), w)
+	promptPad := components.PromptPad("0")
+	fullPage := newGlobal(promptPad)
+	fullPage.Render(context.Background(), w)
 }
 
 func (s *State) RecivePrompt(w ResponseWriter, r *Request) {
@@ -117,15 +126,15 @@ func spf(format string, a ...any) string {
 	return temp
 }
 
-var registredEndpoints = make([]string, 0, 16)
+var endpotins = make([]templ.SafeURL, 0, 16)
 
 type ResponseWriter = http.ResponseWriter
 type Request = http.Request
 type HttpFuncSignature = func(ResponseWriter, *Request)
 
-func httpHandleFunc(endpoint string, fn HttpFuncSignature) {
-	registredEndpoints = append(registredEndpoints, endpoint)
-	http.HandleFunc(endpoint, fn)
+func httpHandleFunc(endpoint templ.SafeURL, fn HttpFuncSignature) {
+	endpotins = append(endpotins, endpoint)
+	http.HandleFunc(string(endpoint), fn)
 }
 
 func main() {
@@ -142,12 +151,15 @@ func main() {
 	// cache-control header to no cache somehow in dev mode
 	http.Handle("/static/", http.StripPrefix("/static/", static))
 
+	deeper := components.PromptSteteBlobalAcces()
+
 	httpHandleFunc("/axis", globState.AxisFn)
 	httpHandleFunc("/history", globState.HistoryFn)
 	httpHandleFunc("/loading", loading)
 	httpHandleFunc("/page/loading", globState.LoadingPage)
 	httpHandleFunc("/page/gen", globState.GeneratePage)
 	httpHandleFunc("/well", globState.RecivePrompt)
+	httpHandleFunc("/prompt", deeper.PromptFn)
 
 	var url = spf("http://%s/%s", base, "history")
 	fmt.Printf("+++ niby wystartowałem api, api route: \n%s\n", url)
