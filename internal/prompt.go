@@ -1,8 +1,9 @@
-package components
+package internal
 
 import (
 	"context"
 	"fmt"
+	"mea_go/components"
 	"net/http"
 	"strings"
 )
@@ -38,7 +39,7 @@ func (ps *PromptState) PromptFn(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set(HeaderContentType, ContentTypeHtml)
-	elem := PromptPad("o")
+	elem := components.PromptPad("o")
 	elem.Render(context.Background(), w)
 }
 

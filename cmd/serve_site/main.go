@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"mea_go/components"
+	"mea_go/internal"
 	"net/http"
 	"time"
 
@@ -151,7 +152,7 @@ func main() {
 	// cache-control header to no cache somehow in dev mode
 	http.Handle("/static/", http.StripPrefix("/static/", static))
 
-	deeper := components.PromptSteteBlobalAcces()
+	deeper := internal.PromptSteteBlobalAcces()
 
 	httpHandleFunc("/axis", globState.AxisFn)
 	httpHandleFunc("/history", globState.HistoryFn)
