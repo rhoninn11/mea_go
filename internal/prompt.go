@@ -6,9 +6,10 @@ import (
 	"mea_go/components"
 	"net/http"
 	"strings"
+
+	"github.com/a-h/templ"
 )
 
-var local PromptState
 var HeaderContentType = "Content-Type"
 
 const (
@@ -16,33 +17,97 @@ const (
 	ContentTypeEventStream = "text/event-stream"
 )
 
-type PromptState struct {
-	prompts [3]string
+const feedId = "feedID"
+
+type PromptMap = map[string]string
+type HttpFuncMap = map[templ.SafeURL]HttpFunc
+
+type GenState struct {
+	prompts     PromptMap
+	promptSlots []string
 }
 
-func (ps *PromptState) setPrompt(id int, text string) {
+var memory GenState
 
+func init() {
+	memory.init()
+	fmt.Println("+++ prompt module inited")
 }
 
-func (ps *PromptState) PromptFn(w http.ResponseWriter, r *http.Request) {
+func (gs *GenState) init() {
+	gs.promptSlots = []string{
+		"slot_a",
+		"slot_b",
+		"slot_c",
+	}
+	size := len(gs.promptSlots)
+	gs.prompts = make(PromptMap, size)
+	for _, slot := range memory.promptSlots {
+		gs.prompts[slot] = "placeholder"
+	}
+}
+
+func (ps *GenState) setPrompt(slot string, text string) {
+	if _, exist := ps.prompts[slot]; exist {
+		ps.prompts[slot] = text
+	}
+}
+
+func PromptEditor() templ.Component {
+	// calls := "/prompt"
+	targetID := fmt.Sprintf("#%s", feedId)
+	edits := []templ.Component{
+		components.PromptPad("slot_a", targetID),
+		components.PromptPad("slot_b", targetID),
+		components.PromptPad("slot_c", targetID),
+		components.GenButton(targetID),
+	}
+	return components.FeedColumn(edits, feedId)
+}
+
+func (ps *GenState) PromptFn(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == http.MethodPost {
 		if r.ParseForm() != nil {
 			http.Error(w, "!!! not specified", 500)
 		}
 
-		for k, v := range r.Form {
-			joined := strings.Join(v, "")
-			fmt.Printf("+++ key: %s, value %s", k, joined)
-			ps.setPrompt(0, joined)
+		for slot, v := range r.Form {
+			ps.setPrompt(slot, strings.Join(v, ""))
+			fmt.Printf("+++ slot: %s, updated\n", slot)
 		}
 	}
 
 	w.Header().Set(HeaderContentType, ContentTypeHtml)
-	elem := components.PromptPad("o")
-	elem.Render(context.Background(), w)
+	editor := PromptEditor()
+	editor.Render(context.Background(), w)
 }
 
-func PromptSteteBlobalAcces() *PromptState {
-	return &local
+func (ps *GenState) PromptCommit(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "!!! commit on get", 500)
+	}
+
+	for k, v := range ps.prompts {
+		fmt.Println("+++", k, v)
+	}
+
+	w.Header().Set(HeaderContentType, ContentTypeHtml)
+	feed := components.FeedColumn(
+		[]templ.Component{
+			components.JustImg(),
+			PromptEditor(),
+		}, "xd")
+	feed.Render(context.Background(), w)
+}
+
+func PromptSteteBlobalAcces() *GenState {
+	return &memory
+}
+
+func (gs *GenState) LoadFns() HttpFuncMap {
+	return HttpFuncMap{
+		"/prompt":        gs.PromptFn,
+		"/prompt/commit": gs.PromptCommit,
+	}
 }

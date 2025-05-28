@@ -83,7 +83,7 @@ func (s *State) LoadingPage(w ResponseWriter, r *Request) {
 // /page/gen
 func (s *State) GeneratePage(w ResponseWriter, r *Request) {
 	w.Header().Set("Content-Type", htmlType)
-	promptPad := components.PromptPad("0")
+	promptPad := internal.PromptEditor()
 	fullPage := newGlobal(promptPad)
 	fullPage.Render(context.Background(), w)
 }
@@ -160,7 +160,10 @@ func main() {
 	httpHandleFunc("/page/loading", globState.LoadingPage)
 	httpHandleFunc("/page/gen", globState.GeneratePage)
 	httpHandleFunc("/well", globState.RecivePrompt)
-	httpHandleFunc("/prompt", deeper.PromptFn)
+	mapping := deeper.LoadFns()
+	for k, v := range mapping {
+		httpHandleFunc(k, v)
+	}
 
 	var url = spf("http://%s/%s", base, "history")
 	fmt.Printf("+++ niby wystartowałem api, api route: \n%s\n", url)

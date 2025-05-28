@@ -1,12 +1,33 @@
 package components
 
-templ PromptPad(id string){
-    <div class="flex flex-col m-2 bg-slate-600 p-4">
-        aaaa bo ty nie ma taga z biblioteeeeką
-        <textarea class="bg-slate-400" name="prompt" hx-post="/prompt"></textarea>
+templ PromptPad(id string, feedID string){
+    <div class="flex flex-col bg-slate-600 p-4 m-1">
+        <textarea class="bg-slate-400" name={id} 
+            hx-post="/prompt"></textarea>
     </div>
 }
 
 templ NoIdPromptPad(){
-    @PromptPad("0")
+    @PromptPad("0", "disabled")
+}
+
+templ FeedColumn(rows []templ.Component, feedID string) {
+    <div class="flex flex-col m-2 bg-slate-700" id={feedID}>
+        for _, row := range rows {
+            @row
+        }
+    </div>
+}
+
+templ GenButton(feedId string) {
+    <div>
+        <button hx-get="/prompt/commit"
+            hx-swap="outerHTML"
+            hx-target={feedId}
+        >Gen image</button>
+    </div>
+}
+
+templ JustImg() {
+    <img src="">    
 }
