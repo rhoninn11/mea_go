@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"mea_go/components"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/a-h/templ"
@@ -15,6 +16,7 @@ var HeaderContentType = "Content-Type"
 const (
 	ContentTypeHtml        = "text/html"
 	ContentTypeEventStream = "text/event-stream"
+	ContentTypePng         = "image/png"
 )
 
 const feedId = "feedID"
@@ -101,6 +103,36 @@ func (ps *GenState) PromptCommit(w http.ResponseWriter, r *http.Request) {
 	feed.Render(context.Background(), w)
 }
 
+var img []byte
+
+func loadImage() ([]byte, error) {
+	bData, err := os.ReadFile("fs/image.png")
+	if err != nil {
+		return nil, err
+	}
+	return bData, nil
+}
+
+func (ps *GenState) PromptImage(w http.ResponseWriter, r *http.Request) {
+	if len(img) == 0 {
+		imgData, err := loadImage()
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		fmt.Println("odczytano zdjęcie")
+		img = imgData
+	}
+	w.Header().Set(HeaderContentType, ContentTypePng)
+	size, err := w.Write(img)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	fmt.Println("+++ wysłano zdjęcie ", size)
+
+}
+
 func PromptSteteBlobalAcces() *GenState {
 	return &memory
 }
@@ -109,5 +141,6 @@ func (gs *GenState) LoadFns() HttpFuncMap {
 	return HttpFuncMap{
 		"/prompt":        gs.PromptFn,
 		"/prompt/commit": gs.PromptCommit,
+		"/prompt/img":    gs.PromptImage,
 	}
 }
