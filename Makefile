@@ -14,3 +14,6 @@ css:
 
 build_site: templ css
 	go build -o ./tmp/main cmd/serve_site/main.go
+
+proto: 
+	go run cmd/protogen.go
