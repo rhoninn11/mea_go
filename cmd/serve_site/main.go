@@ -142,7 +142,8 @@ func main() {
 	// for _, key := range keys {
 	// 	fmt.Println(mojUkladOdniesienia[key])
 	// }
-	const host = "localhost"
+	// const host = "localhost"
+	const host = "0.0.0.0"
 	const port = 8080
 	var base = spf("%s:%d", host, port) // eg localhost:8080
 
