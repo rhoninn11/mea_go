@@ -152,7 +152,7 @@ func main() {
 	// cache-control header to no cache somehow in dev mode
 	http.Handle("/static/", http.StripPrefix("/static/", static))
 
-	deeper := internal.PromptSteteBlobalAcces()
+	deeper := internal.PromptModuleAccess()
 
 	httpHandleFunc("/axis", globState.AxisFn)
 	httpHandleFunc("/history", globState.HistoryFn)

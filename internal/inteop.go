@@ -7,7 +7,7 @@ import (
 	mea_gen_d "mea_go/api/mea.gen.d"
 )
 
-func ProtoToGo(protoImg *mea_gen_d.Image) *image.RGBA {
+func ImgProtoToGo(protoImg *mea_gen_d.Image) *image.RGBA {
 	w := int(protoImg.Info.Width)
 	h := int(protoImg.Info.Height)
 	total := w * h
