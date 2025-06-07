@@ -29,5 +29,13 @@ templ GenButton(feedId string) {
 }
 
 templ JustImg(imgUrl string) {
-    <img src={imgUrl}>    
+    <img src={imgUrl} class="size-64">    
+}
+
+templ FlexRow(elems []templ.Component) {
+    <div class="flex">
+        for _, element := range elems {
+            @element
+        }
+    </div>
 }

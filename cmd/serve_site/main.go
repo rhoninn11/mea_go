@@ -8,8 +8,6 @@ import (
 	"mea_go/internal"
 	"net/http"
 	"time"
-
-	"github.com/a-h/templ"
 )
 
 type Direction struct {
@@ -42,20 +40,14 @@ func init() {
 var htmlType = "text/html"
 var textStreamType = "text/event-stream"
 
-func newGlobal(main templ.Component) templ.Component {
-	side := components.SideLinks(endpotins)
-	twoTabs := components.TwoTabs(side, main)
-	return components.Global("Tua editro", twoTabs)
-}
-
-func (s *State) AxisFn(w ResponseWriter, r *Request) {
+func (s *State) AxisFn(w http.ResponseWriter, r *http.Request) {
 	dir := mojUkladOdniesienia[s.keys[s.lastUsage]]
 	text := dir.LatentVector
 
-	w.Header().Set("Content-Type", htmlType)
+	w.Header().Set(internal.HContentType, htmlType)
 	historyNote := fmt.Sprintf("%s |może data|", text)
 	entry := components.Entry(historyNote)
-	glob := newGlobal(entry)
+	glob := internal.PageWithSidebar(entry)
 	glob.Render(r.Context(), w)
 
 	s.lastUsage += 1
@@ -65,14 +57,14 @@ func (s *State) AxisFn(w ResponseWriter, r *Request) {
 	}
 }
 
-func (s *State) HistoryFn(w ResponseWriter, r *Request) {
+func (s *State) HistoryFn(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", htmlType)
 	history := components.HistoryWhole(s.history)
-	page := newGlobal(history)
+	page := internal.PageWithSidebar(history)
 	page.Render(context.Background(), w)
 }
 
-func (s *State) LoadingPage(w ResponseWriter, r *Request) {
+func (s *State) LoadingPage(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", htmlType)
 	render := components.SectionWithLoading()
@@ -81,14 +73,14 @@ func (s *State) LoadingPage(w ResponseWriter, r *Request) {
 }
 
 // /page/gen
-func (s *State) GeneratePage(w ResponseWriter, r *Request) {
+func (s *State) GeneratePage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", htmlType)
 	promptPad := internal.PromptEditor()
-	fullPage := newGlobal(promptPad)
+	fullPage := internal.PageWithSidebar(promptPad)
 	fullPage.Render(context.Background(), w)
 }
 
-func (s *State) RecivePrompt(w ResponseWriter, r *Request) {
+func (s *State) RecivePrompt(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("+++wywołano well")
 
 	if r.Method != http.MethodPost {
@@ -111,7 +103,7 @@ func (s *State) RecivePrompt(w ResponseWriter, r *Request) {
 	render.Render(context.Background(), w)
 }
 
-func loading(w ResponseWriter, r *Request) {
+func loading(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", textStreamType) // but i hope html can be pushed fine😅
 	for i := range 10 {
 		render := components.Block(i)
@@ -121,52 +113,53 @@ func loading(w ResponseWriter, r *Request) {
 	}
 }
 
-func spf(format string, a ...any) string {
-	var temp = fmt.Sprintf(format, a...)
-	// fmt.Println("+++Debug: ", temp)
-	return temp
-}
+// func noCacheMiddleware(base internal.HttpFunc) internal.HttpFunc {
+// 	return func(w http.ResponseWriter, r *http.Request) {
+// 		w.Header(internal.HCacheControl, no-cache)
+// 		base(w, r)
+// 	}
+// }
 
-var endpotins = make([]templ.SafeURL, 0, 16)
-
-type ResponseWriter = http.ResponseWriter
-type Request = http.Request
-type HttpFuncSignature = func(ResponseWriter, *Request)
-
-func httpHandleFunc(endpoint templ.SafeURL, fn HttpFuncSignature) {
-	endpotins = append(endpotins, endpoint)
-	http.HandleFunc(string(endpoint), fn)
-}
+const (
+	DEBUG = "DEBUG"
+	PROD  = "PROD"
+)
 
 func main() {
+	var mode = DEBUG
+	_ = mode
 	// for _, key := range keys {
 	// 	fmt.Println(mojUkladOdniesienia[key])
 	// }
 	// const host = "localhost"
 	const host = "0.0.0.0"
 	const port = 8080
-	var base = spf("%s:%d", host, port) // eg localhost:8080
+	var base = fmt.Sprintf("%s:%d", host, port) // eg localhost:8080
 
 	static := http.FileServer(http.Dir("./static/"))
+	// if mode == DEBUG {
+	// 	static = noCacheMiddleware(static)
+	// }
 
 	// TODO: for static files rebuild in development would be nice to set
 	// cache-control header to no cache somehow in dev mode
 	http.Handle("/static/", http.StripPrefix("/static/", static))
 
 	deeper := internal.PromptModuleAccess()
+	register := internal.RegisterHandler
 
-	httpHandleFunc("/axis", globState.AxisFn)
-	httpHandleFunc("/history", globState.HistoryFn)
-	httpHandleFunc("/loading", loading)
-	httpHandleFunc("/page/loading", globState.LoadingPage)
-	httpHandleFunc("/page/gen", globState.GeneratePage)
-	httpHandleFunc("/well", globState.RecivePrompt)
+	register("/axis", globState.AxisFn)
+	register("/history", globState.HistoryFn)
+	register("/loading", loading)
+	register("/page/loading", globState.LoadingPage)
+	register("/page/gen", globState.GeneratePage)
+	register("/well", globState.RecivePrompt)
 	mapping := deeper.LoadFns()
 	for k, v := range mapping {
-		httpHandleFunc(k, v)
+		register(k, v)
 	}
 
-	var url = spf("http://%s/%s", base, "history")
+	var url = fmt.Sprintf("http://%s/%s", base, "history")
 	fmt.Printf("+++ niby wystartowałem api, api route: \n%s\n", url)
-	http.ListenAndServe(base, nil)
+	_ = http.ListenAndServe(base, nil)
 }

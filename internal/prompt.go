@@ -1,24 +1,25 @@
 package internal
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"image/png"
 	"log"
-	mea_gen_d "mea_go/api/mea.gen.d"
+	"math"
 	"mea_go/components"
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/a-h/templ"
 )
 
-var HeaderContentType = "Content-Type"
+const (
+	HContentType  = "Content-Type"
+	HCacheControl = "Cache-Control"
+)
 
 const (
+	ContentTypePlainText   = "text/plain"
 	ContentTypeHtml        = "text/html"
 	ContentTypeEventStream = "text/event-stream"
 	ContentTypePng         = "image/png"
@@ -36,6 +37,12 @@ type GenState struct {
 	promptSlots []string
 	comfyData   *ComfyData
 	imageData   ImgMap
+	imageIds    []string
+}
+
+func (gs *GenState) addImage(id string, data []byte) {
+	gs.imageIds = append(gs.imageIds, id)
+	gs.imageData[id] = data
 }
 
 var memory GenState
@@ -53,7 +60,8 @@ func (gs *GenState) init() {
 	}
 	size := len(gs.promptSlots)
 	gs.prompts = make(PromptMap, size)
-	gs.imageData = make(ImgMap, size)
+	gs.imageData = make(ImgMap, 128)
+	gs.imageIds = make([]string, 0, 128)
 	for _, slot := range memory.promptSlots {
 		gs.prompts[slot] = "placeholder"
 	}
@@ -80,6 +88,7 @@ func (gs *GenState) init() {
 			errs = append(errs, err)
 		}
 		log.Default().Println("INFO: ", imgPath, " loaded")
+		gs.imageIds = append(gs.imageIds, id)
 		gs.imageData[id] = data
 	}
 	for _, err := range errs {
@@ -106,7 +115,7 @@ func PromptEditor() templ.Component {
 	return components.FeedColumn(edits, feedId)
 }
 
-func (ps *GenState) GenPage(w http.ResponseWriter, r *http.Request) {
+func (ps *GenState) PromptInput(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == http.MethodPost {
 		if r.ParseForm() != nil {
@@ -119,66 +128,58 @@ func (ps *GenState) GenPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	w.Header().Set(HeaderContentType, ContentTypeHtml)
-
-	imgs := make([]templ.Component, 0, len(ps.imageData)+1)
-	for k, _ := range ps.imageData {
-		imgComp := components.JustImg(imgUrl(k))
-		imgs = append(imgs, imgComp)
-	}
-
-	imgs = append(imgs, PromptEditor())
-	feed := components.FeedColumn(imgs, "imgs")
-
-	feed.Render(context.Background(), w)
+	w.WriteHeader(200)
 }
 
-func uniqueName() string {
-	timestump := time.Now().UTC().UnixMilli()
-	return fmt.Sprintf("%d", timestump)
+// show all results and editor
+func (ps *GenState) GenPage(w http.ResponseWriter, r *http.Request) {
+
+	// if r.Method == http.MethodPost {
+	// 	if r.ParseForm() != nil {
+	// 		http.Error(w, "!!! not specified", 500)
+	// 	}
+
+	// 	for slot, v := range r.Form {
+	// 		ps.setPrompt(slot, strings.Join(v, ""))
+	// 		fmt.Printf("+++ slot: %s, updated\n", slot)
+	// 	}
+	// }
+
+	w.Header().Set(HContentType, ContentTypeHtml)
+
+	const colNum = 4
+	var imgNum = len(ps.imageIds)
+	var rowNum = int(math.Ceil(float64(imgNum) / colNum))
+	// fmt.Println("+++ rows ", rowNum, " cols ", colNum)
+
+	rows := make([]templ.Component, 0, rowNum)
+	row := make([]templ.Component, colNum)
+
+	lastElem := colNum - 1
+	var showedImgNum = 0
+	for i, id := range ps.imageIds {
+		imgComp := components.JustImg(imgUrl(id))
+		elemIdx := i % colNum
+		row[elemIdx] = imgComp
+		if elemIdx == lastElem {
+			rowCopy := make([]templ.Component, colNum)
+			copy(rowCopy, row)
+			rows = append(rows, components.FlexRow(rowCopy))
+			showedImgNum += len(rowCopy)
+		}
+	}
+	delta := imgNum - showedImgNum
+	if delta > 0 {
+		rows = append(rows, components.FlexRow(row[0:delta]))
+	}
+
+	rows = append(rows, PromptEditor())
+	feed := components.FeedColumn(rows, "imgs")
+	wholePage := PageWithSidebar(feed)
+	wholePage.Render(context.Background(), w)
 }
 
-func imageGen(gen *GenState, comfy *ComfyData) (string, error) {
-	var _plug mea_gen_d.Empty
-	firsSlot := gen.promptSlots[0]
-	prompt := gen.prompts[firsSlot]
-
-	opt := comfy.Options
-	serv := comfy.Service
-
-	opt.Prompts = []string{prompt}
-	if _, err := serv.SetOptions(comfy.Ctx, opt); err != nil {
-		return "", fmt.Errorf("!!! options failed, %v", err)
-	}
-
-	pImg, err := serv.Txt2Img(comfy.Ctx, &_plug)
-	if err != nil {
-		return "", fmt.Errorf("!!! txt2img failed, %v", err)
-	}
-
-	imgName := uniqueName()
-	gImg := ImgProtoToGo(pImg)
-	var buffer = bytes.Buffer{}
-	if err := png.Encode(&buffer, gImg); err != nil {
-		return "", fmt.Errorf("!!! failed to encode %s, %v", imgName, err)
-	}
-	gen.imageData[imgName] = buffer.Bytes()
-
-	fileName := fmt.Sprintf("_fs/img/%s.png", imgName)
-	file, err := os.Create(fileName)
-	if err != nil {
-		return "", fmt.Errorf("!!! file failed to open %s, %v", fileName, err)
-	}
-	defer file.Close()
-
-	_, err = file.Write(buffer.Bytes())
-	if err != nil {
-		return "", fmt.Errorf("!!! file write fail %s, %v", fileName, err)
-	}
-	return imgName, nil
-
-}
-
+// Slightly drunk medevil gardener is suprised that his bell become so big
 func (ps *GenState) PromptCommit(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "!!! commit on get", 500)
@@ -194,7 +195,7 @@ func (ps *GenState) PromptCommit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set(HeaderContentType, ContentTypeHtml)
+	w.Header().Set(HContentType, ContentTypeHtml)
 	feed := components.FeedColumn(
 		[]templ.Component{
 			components.JustImg(imgUrl(id)),
@@ -203,19 +204,7 @@ func (ps *GenState) PromptCommit(w http.ResponseWriter, r *http.Request) {
 	feed.Render(context.Background(), w)
 }
 
-var img []byte
-
-func loadImage() ([]byte, error) {
-	bData, err := os.ReadFile("fs/image.png")
-
-	if err != nil {
-		return nil, err
-	}
-	return bData, nil
-}
-
 func (ps *GenState) FetchImage(w http.ResponseWriter, r *http.Request) {
-
 	vals := r.URL.Query()
 	id, ok := vals["id"]
 	if !ok {
@@ -228,13 +217,12 @@ func (ps *GenState) FetchImage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad request", 500)
 	}
 
-	w.Header().Set(HeaderContentType, ContentTypePng)
-	size, err := w.Write(imgData)
+	w.Header().Set(HContentType, ContentTypePng)
+	_, err := w.Write(imgData)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	fmt.Println("+++ sended ", size, " bytes")
 }
 
 func PromptModuleAccess() *GenState {
@@ -249,7 +237,8 @@ func imgUrl(id string) string {
 
 func (gs *GenState) LoadFns() HttpFuncMap {
 	return HttpFuncMap{
-		"/prompt":        gs.GenPage,
+		"/gen_page":      gs.GenPage,
+		"/prompt":        gs.PromptInput,
 		"/prompt/commit": gs.PromptCommit,
 		"/prompt/img":    gs.FetchImage,
 	}

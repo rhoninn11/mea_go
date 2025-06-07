@@ -14,8 +14,8 @@ templ Global(name string, body templ.Component) {
 			<link rel="stylesheet" href="/static/style.css">
 			<title>{name}</title>
 		</head>
-		<body>
-			<h1>{name}</h1>
+		<body class="bg-slate-800">
+			<h1 class="text-slate-300">{name}</h1>
 			@body
 		</body>
 	</html>
