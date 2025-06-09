@@ -1,7 +1,7 @@
 
 
 templ:
-	templ generate
+	go tool templ generate
 
 serve: templ
 	go run cmd/comfy/main.go

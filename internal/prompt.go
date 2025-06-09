@@ -27,10 +27,18 @@ const (
 
 const feedId = "feedID"
 
+const (
+	SLOT_A = "slot_a"
+	SLOT_B = "slot_b"
+	SLOT_C = "slot_c"
+)
+
 type HttpFuncMap = map[templ.SafeURL]HttpFunc
 
 type PromptMap = map[string]string
 type ImgMap = map[string][]byte
+
+type PromptSlots = []string
 
 type GenState struct {
 	prompts     PromptMap
@@ -40,6 +48,13 @@ type GenState struct {
 	imageIds    []string
 }
 
+type FlowData struct {
+	slots PromptSlots
+	rowID string
+	colID string
+}
+
+// hmm maybe simple squil would be adequate, like SQLite or Postgress
 func (gs *GenState) addImage(id string, data []byte) {
 	gs.imageIds = append(gs.imageIds, id)
 	gs.imageData[id] = data
@@ -49,23 +64,10 @@ var memory GenState
 
 func init() {
 	memory.init()
-	fmt.Println("+++ prompt module inited")
+	memory.fsImageFetch()
 }
 
-func (gs *GenState) init() {
-	gs.promptSlots = []string{
-		"slot_a",
-		"slot_b",
-		"slot_c",
-	}
-	size := len(gs.promptSlots)
-	gs.prompts = make(PromptMap, size)
-	gs.imageData = make(ImgMap, 128)
-	gs.imageIds = make([]string, 0, 128)
-	for _, slot := range memory.promptSlots {
-		gs.prompts[slot] = "placeholder"
-	}
-
+func (gs *GenState) fsImageFetch() {
 	imgDir := "_fs/img"
 	entries, err := os.ReadDir(imgDir)
 	if err != nil {
@@ -97,22 +99,28 @@ func (gs *GenState) init() {
 	}
 }
 
-func (ps *GenState) setPrompt(slot string, text string) {
-	if _, exist := ps.prompts[slot]; exist {
-		ps.prompts[slot] = text
+func (gs *GenState) init() {
+	gs.promptSlots = []string{SLOT_A, SLOT_B, SLOT_C}
+
+	size := len(gs.promptSlots)
+	gs.prompts = make(PromptMap, size)
+	gs.imageData = make(ImgMap, 128)
+	gs.imageIds = make([]string, 0, 128)
+	for _, slot := range memory.promptSlots {
+		gs.prompts[slot] = "placeholder"
 	}
 }
 
-func PromptEditor() templ.Component {
+func PromptEditor(editorID string) templ.Component {
 	// calls := "/prompt"
-	targetID := fmt.Sprintf("#%s", feedId)
-	edits := []templ.Component{
-		components.PromptPad("slot_a", targetID),
-		components.PromptPad("slot_b", targetID),
-		components.PromptPad("slot_c", targetID),
-		components.GenButton(targetID),
+	submmitBtn := components.GenButton(fmt.Sprintf("#%s", editorID))
+	editor := []templ.Component{
+		components.PromptPad(SLOT_A, SLOT_A),
+		components.PromptPad(SLOT_B, SLOT_B),
+		components.PromptPad(SLOT_C, SLOT_C),
+		submmitBtn,
 	}
-	return components.FeedColumn(edits, feedId)
+	return components.FeedColumn(editor, editorID)
 }
 
 func (ps *GenState) PromptInput(w http.ResponseWriter, r *http.Request) {
@@ -120,31 +128,24 @@ func (ps *GenState) PromptInput(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		if r.ParseForm() != nil {
 			http.Error(w, "!!! not specified", 500)
+			return
 		}
 
-		for slot, v := range r.Form {
-			ps.setPrompt(slot, strings.Join(v, ""))
-			fmt.Printf("+++ slot: %s, updated\n", slot)
+		for slot, data := range r.Form {
+			prompt := strings.Join(data, "")
+			if _, ok := ps.prompts[slot]; ok {
+				ps.prompts[slot] = prompt
+			} else {
+				http.Error(w, "!!! not specified", 500)
+				return
+			}
 		}
 	}
-
 	w.WriteHeader(200)
 }
 
 // show all results and editor
 func (ps *GenState) GenPage(w http.ResponseWriter, r *http.Request) {
-
-	// if r.Method == http.MethodPost {
-	// 	if r.ParseForm() != nil {
-	// 		http.Error(w, "!!! not specified", 500)
-	// 	}
-
-	// 	for slot, v := range r.Form {
-	// 		ps.setPrompt(slot, strings.Join(v, ""))
-	// 		fmt.Printf("+++ slot: %s, updated\n", slot)
-	// 	}
-	// }
-
 	w.Header().Set(HContentType, ContentTypeHtml)
 
 	const colNum = 4
@@ -173,7 +174,7 @@ func (ps *GenState) GenPage(w http.ResponseWriter, r *http.Request) {
 		rows = append(rows, components.FlexRow(row[0:delta]))
 	}
 
-	rows = append(rows, PromptEditor())
+	rows = append(rows, PromptEditor("prompt_editor"))
 	feed := components.FeedColumn(rows, "imgs")
 	wholePage := PageWithSidebar(feed)
 	wholePage.Render(context.Background(), w)
@@ -199,7 +200,7 @@ func (ps *GenState) PromptCommit(w http.ResponseWriter, r *http.Request) {
 	feed := components.FeedColumn(
 		[]templ.Component{
 			components.JustImg(imgUrl(id)),
-			PromptEditor(),
+			PromptEditor("prompt_editor"),
 		}, "xd")
 	feed.Render(context.Background(), w)
 }
@@ -227,7 +228,7 @@ func (ps *GenState) FetchImage(w http.ResponseWriter, r *http.Request) {
 
 func PromptModuleAccess() *GenState {
 
-	defaultComfy := SpawComfyDefault()
+	defaultComfy := DefaultComfySpawn()
 	memory.comfyData = &defaultComfy
 	return &memory
 }
