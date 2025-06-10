@@ -159,7 +159,7 @@ func (ps *GenState) GenPage(w http.ResponseWriter, r *http.Request) {
 	lastElem := colNum - 1
 	var showedImgNum = 0
 	for i, id := range ps.imageIds {
-		imgComp := components.JustImg(imgUrl(id))
+		imgComp := components.JustImg(imgUrl(id), imgDelUrl(id))
 		elemIdx := i % colNum
 		row[elemIdx] = imgComp
 		if elemIdx == lastElem {
@@ -199,7 +199,7 @@ func (ps *GenState) PromptCommit(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set(HContentType, ContentTypeHtml)
 	feed := components.FeedColumn(
 		[]templ.Component{
-			components.JustImg(imgUrl(id)),
+			components.JustImg(imgUrl(id), imgDelUrl(id)),
 			PromptEditor("prompt_editor"),
 		}, "xd")
 	feed.Render(context.Background(), w)
@@ -225,6 +225,12 @@ func (ps *GenState) FetchImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+func (ps *GenState) DeleteImage(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+
+	w.WriteHeader(200)
+	fmt.Println("+++ delete call for ", id)
+}
 
 func PromptModuleAccess() *GenState {
 
@@ -235,12 +241,16 @@ func PromptModuleAccess() *GenState {
 func imgUrl(id string) string {
 	return fmt.Sprintf("/prompt/img?id=%s", id)
 }
+func imgDelUrl(id string) string {
+	return fmt.Sprintf("/prompt/img/del/%s", id)
+}
 
 func (gs *GenState) LoadFns() HttpFuncMap {
 	return HttpFuncMap{
-		"/gen_page":      gs.GenPage,
-		"/prompt":        gs.PromptInput,
-		"/prompt/commit": gs.PromptCommit,
-		"/prompt/img":    gs.FetchImage,
+		"/gen_page":            gs.GenPage,
+		"/prompt":              gs.PromptInput,
+		"/prompt/commit":       gs.PromptCommit,
+		"/prompt/img":          gs.FetchImage,
+		"/prompt/img/del/{id}": gs.DeleteImage,
 	}
 }

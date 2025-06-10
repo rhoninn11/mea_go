@@ -6,6 +6,7 @@ import (
 	"log"
 	"mea_go/internal"
 	"os"
+	"regexp"
 	"strings"
 )
 
@@ -16,6 +17,18 @@ func parseProto(filePath string) error {
 	}
 
 	fmt.Println("+++ listing content of ", filePath)
+	err = protoTypes(content)
+	if err != nil {
+		return fmt.Errorf("!!! type extraction failed, %v", err)
+	}
+	err = protoRpcs(content)
+	if err != nil {
+		return fmt.Errorf("!!! rpcs extraction failed, %v", err)
+	}
+	return nil
+}
+
+func protoTypes(content []byte) error {
 	lines := bytes.Split(content, []byte("\n"))
 
 	var types [][][]byte = make([][][]byte, 0, 64)
@@ -39,11 +52,25 @@ func parseProto(filePath string) error {
 		}
 	}
 
-	for _, tpy := range types {
-		whole := bytes.Join(tpy, []byte("\n"))
-		fmt.Printf("---found type: \n%s\n\n", string(whole))
+	reRule := `message\s(\w+)\s{`
+	protoRe, err := regexp.Compile(reRule)
+	if err != nil {
+		return fmt.Errorf("!!! fauled to compile re, %v", err)
 	}
 
+	for _, tpy := range types {
+		whole := bytes.Join(tpy, []byte("\n"))
+		found := protoRe.FindStringSubmatch(string(whole))
+		if len(found) > 1 {
+			typeName := found[1]
+			fmt.Printf("---found type: %s\n", typeName)
+		}
+	}
+
+	return nil
+}
+
+func protoRpcs(content []byte) error {
 	return nil
 }
 

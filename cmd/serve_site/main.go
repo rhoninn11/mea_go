@@ -8,6 +8,8 @@ import (
 	"mea_go/internal"
 	"net/http"
 	"time"
+
+	"github.com/a-h/templ"
 )
 
 type Direction struct {
@@ -74,10 +76,14 @@ func (s *State) LoadingPage(w http.ResponseWriter, r *http.Request) {
 
 // /page/gen
 func (s *State) GeneratePage(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", htmlType)
-	promptPad := internal.PromptEditor()
-	fullPage := internal.PageWithSidebar(promptPad)
-	fullPage.Render(context.Background(), w)
+	var content templ.Component
+	defer func() {
+		w.Header().Set("Content-Type", htmlType)
+		fullPage := internal.PageWithSidebar(content)
+		fullPage.Render(context.Background(), w)
+	}()
+
+	content = internal.PromptEditor("unique-id")
 }
 
 func (s *State) RecivePrompt(w http.ResponseWriter, r *http.Request) {

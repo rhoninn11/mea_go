@@ -28,8 +28,18 @@ templ GenButton(feedId string) {
     </div>
 }
 
-templ JustImg(imgUrl string) {
-    <img src={imgUrl} class="size-64">    
+templ JustImg(imgUrl string, delUrl string) {
+    <div class="relative">
+        <img src={imgUrl} class="size-64">
+        <div class="absolute top-4 right-4 bg-slate-900 text-slate-300 size-8 text-lg flex items-center justify-center rounded-lg"
+            hx-get={delUrl} hx-swap="none">
+            <div>🗑</div>
+        </div>
+        <div class="absolute top-4 left-4 bg-slate-900 text-slate-300 size-8 text-lg flex items-center justify-center rounded-lg"
+            hx-get={delUrl} hx-swap="none">
+            <div>🔍</div>
+        </div>
+    </div>
 }
 
 templ FlexRow(elems []templ.Component) {
