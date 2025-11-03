@@ -21,7 +21,14 @@ func imageGen(gen *GenState, comfy *ComfyData) (string, error) {
 	opt := comfy.Options
 	serv := comfy.Service
 
-	opt.Prompts = []string{prompt}
+	prompcik := mea_gen_d.SlotedPrompt{
+		Slot:   mea_gen_d.Slot_a,
+		Prompt: prompt,
+	}
+	if _, err := serv.SetPrompt(comfy.Ctx, &prompcik); err != nil {
+		return "", fmt.Errorf("failed to set prompt | %v", err)
+	}
+
 	if _, err := serv.SetOptions(comfy.Ctx, opt); err != nil {
 		return "", fmt.Errorf("!!! options failed, %v", err)
 	}

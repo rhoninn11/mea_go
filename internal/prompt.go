@@ -13,18 +13,6 @@ import (
 	"github.com/a-h/templ"
 )
 
-const (
-	HContentType  = "Content-Type"
-	HCacheControl = "Cache-Control"
-)
-
-const (
-	ContentTypePlainText   = "text/plain"
-	ContentTypeHtml        = "text/html"
-	ContentTypeEventStream = "text/event-stream"
-	ContentTypePng         = "image/png"
-)
-
 const feedId = "feedID"
 
 const (
@@ -146,7 +134,7 @@ func (ps *GenState) PromptInput(w http.ResponseWriter, r *http.Request) {
 
 // show all results and editor
 func (ps *GenState) GenPage(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set(HContentType, ContentTypeHtml)
+	SetContentType(w, ContentTypeHtml)
 
 	const colNum = 4
 	var imgNum = len(ps.imageIds)
@@ -180,15 +168,18 @@ func (ps *GenState) GenPage(w http.ResponseWriter, r *http.Request) {
 	wholePage.Render(context.Background(), w)
 }
 
-// Slightly drunk medevil gardener is suprised that his bell become so big
 func (ps *GenState) PromptCommit(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "!!! commit on get", 500)
 	}
 
 	for k, v := range ps.prompts {
-		fmt.Println("+++", k, v)
+		fmt.Println("+++ kv:", k, v)
 	}
+
+	log.Fatal("exit:D")
+	// tu bym mógł zapisać prompty do bazy danych
+	// może jako proto jako blob binarny w sql lite?
 	id, err := imageGen(ps, ps.comfyData)
 	if err != nil {
 		log.Default().Println("ERR: ", err.Error())
@@ -196,7 +187,7 @@ func (ps *GenState) PromptCommit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set(HContentType, ContentTypeHtml)
+	SetContentType(w, ContentTypeHtml)
 	feed := components.FeedColumn(
 		[]templ.Component{
 			components.JustImg(imgUrl(id), imgDelUrl(id)),
@@ -218,7 +209,7 @@ func (ps *GenState) FetchImage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad request", 500)
 	}
 
-	w.Header().Set(HContentType, ContentTypePng)
+	SetContentType(w, ContentTypeHtml)
 	_, err := w.Write(imgData)
 	if err != nil {
 		http.Error(w, err.Error(), 500)

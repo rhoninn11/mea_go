@@ -37,10 +37,10 @@ type ComfyData struct {
 
 func DefaultOpts() mea_gen_d.Options {
 	return mea_gen_d.Options{
-		Prompts:  []string{""},
-		ImgPower: 1,
-		Seed:     0,
-		InptFlag: mea_gen_d.InpaintType_SDXL,
+		PromptChain: []mea_gen_d.Slot{mea_gen_d.Slot_a},
+		ImgPower:    1.1,
+		Seed:        1,
+		ModelFlag:   mea_gen_d.InpaintType_SDXL,
 	}
 }
 

@@ -28,3 +28,10 @@ func PageWithSidebar(main templ.Component) templ.Component {
 	twoTabs := components.TwoTabs(side, main)
 	return components.Global("Tua editro", twoTabs)
 }
+
+func NoCacheMiddleware(base http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add(HCacheControl, "no-cahce")
+		base.ServeHTTP(w, r)
+	})
+}
