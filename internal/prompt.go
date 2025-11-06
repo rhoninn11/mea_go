@@ -134,7 +134,7 @@ func (ps *GenState) PromptInput(w http.ResponseWriter, r *http.Request) {
 
 // show all results and editor
 func (ps *GenState) GenPage(w http.ResponseWriter, r *http.Request) {
-	SetContentType(w, ContentTypeHtml)
+	SetContentType(w, ContentType_Html)
 
 	const colNum = 4
 	var imgNum = len(ps.imageIds)
@@ -177,7 +177,6 @@ func (ps *GenState) PromptCommit(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("+++ kv:", k, v)
 	}
 
-	log.Fatal("exit:D")
 	// tu bym mógł zapisać prompty do bazy danych
 	// może jako proto jako blob binarny w sql lite?
 	id, err := imageGen(ps, ps.comfyData)
@@ -187,7 +186,7 @@ func (ps *GenState) PromptCommit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	SetContentType(w, ContentTypeHtml)
+	SetContentType(w, ContentType_Html)
 	feed := components.FeedColumn(
 		[]templ.Component{
 			components.JustImg(imgUrl(id), imgDelUrl(id)),
@@ -209,18 +208,42 @@ func (ps *GenState) FetchImage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad request", 500)
 	}
 
-	SetContentType(w, ContentTypeHtml)
+	SetContentType(w, ContentType_Html)
 	_, err := w.Write(imgData)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
 	}
 }
+
+func InformError(err error, w *http.ResponseWriter) {
+	if w != nil {
+		http.Error(*w, err.Error(), 500)
+	}
+	log.Default().Println(err.Error())
+}
+
 func (ps *GenState) DeleteImage(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
+	if _, ok := ps.imageData[id]; !ok {
+		InformError(fmt.Errorf("data for %s not present", id), &w)
+		return
+	}
+
+	imgFile := JoinPath(DirImage(), Filename(id, "png"))
+	if _, err := os.Stat(imgFile); err != nil {
+		InformError(fmt.Errorf("file for %s dont exist | %v", id, err), &w)
+		return
+	}
+
+	if err := os.RemoveAll(imgFile); err != nil {
+		InformError(fmt.Errorf("%s file deletion failed", id), &w)
+		return
+	}
+
+	fmt.Println("+++ succesfully deleted: ", imgFile)
 	w.WriteHeader(200)
-	fmt.Println("+++ delete call for ", id)
 }
 
 func PromptModuleAccess() *GenState {

@@ -7,6 +7,12 @@ import (
 	"strings"
 )
 
+const Fs_Path = "_fs"
+
+func DirImage() string {
+	return JoinPath(Fs_Path, "img")
+}
+
 func PathExist(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil

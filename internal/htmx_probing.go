@@ -47,7 +47,7 @@ func (s *State) AxisFn(w http.ResponseWriter, r *http.Request) {
 	dir := mojUkladOdniesienia[s.keys[s.lastUsage]]
 	text := dir.LatentVector
 
-	SetContentType(w, ContentTypeHtml)
+	SetContentType(w, ContentType_Html)
 	historyNote := fmt.Sprintf("%s |może data|", text)
 	entry := components.Entry(historyNote)
 	glob := PageWithSidebar(entry)
@@ -61,21 +61,21 @@ func (s *State) AxisFn(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *State) HistoryFn(w http.ResponseWriter, r *http.Request) {
-	SetContentType(w, ContentTypeHtml)
+	SetContentType(w, ContentType_Html)
 	history := components.HistoryWhole(s.history)
 	page := PageWithSidebar(history)
 	page.Render(context.Background(), w)
 }
 
 func (s *State) LoadingPage(w http.ResponseWriter, r *http.Request) {
-	SetContentType(w, ContentTypeHtml)
+	SetContentType(w, ContentType_Html)
 	render := components.SectionWithLoading()
 	render = components.Global("Loading Page", render)
 	render.Render(context.Background(), w)
 }
 
 func LoadingTest(w http.ResponseWriter, r *http.Request) {
-	SetContentType(w, ContentTypeHtml)
+	SetContentType(w, ContentType_Html)
 	for i := range 10 {
 		render := components.Block(i)
 		render.Render(context.Background(), w)

@@ -8,8 +8,8 @@ const (
 type ContentType string
 
 const (
-	ContentTypePlainText   ContentType = "text/plain"
-	ContentTypeHtml        ContentType = "text/html"
-	ContentTypeEventStream ContentType = "text/event-stream"
-	ContentTypePng         ContentType = "image/png"
+	ContentType_PlainText   ContentType = "text/plain"
+	ContentType_Html        ContentType = "text/html"
+	ContentType_EventStream ContentType = "text/event-stream"
+	ContentType_Png         ContentType = "image/png"
 )

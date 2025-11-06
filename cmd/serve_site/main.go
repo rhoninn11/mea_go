@@ -15,7 +15,7 @@ import (
 func GeneratePage(w http.ResponseWriter, r *http.Request) {
 	var content templ.Component
 	defer func() {
-		internal.SetContentType(w, internal.ContentTypeHtml)
+		internal.SetContentType(w, internal.ContentType_Html)
 		fullPage := internal.PageWithSidebar(content)
 		fullPage.Render(context.Background(), w)
 	}()
@@ -40,7 +40,7 @@ func RecivePrompt(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("+++", k, v)
 	}
 
-	internal.SetContentType(w, internal.ContentTypeHtml)
+	internal.SetContentType(w, internal.ContentType_Html)
 	render := components.Block(0)
 	render.Render(context.Background(), w)
 }
