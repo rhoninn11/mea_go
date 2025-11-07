@@ -164,7 +164,9 @@ func (ps *GenState) GenPage(w http.ResponseWriter, r *http.Request) {
 
 	rows = append(rows, PromptEditor("prompt_editor"))
 	feed := components.FeedColumn(rows, "imgs")
-	wholePage := PageWithSidebar(feed)
+	modal_demo := components.ModalDemo(previewOpen())
+	exp_wrap := components.FeedColumn([]templ.Component{feed, modal_demo}, "imgs_with_modal")
+	wholePage := PageWithSidebar(exp_wrap)
 	wholePage.Render(context.Background(), w)
 }
 
@@ -242,8 +244,21 @@ func (ps *GenState) DeleteImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	delete(ps.imageData, id)
 	fmt.Println("+++ succesfully deleted: ", imgFile)
 	w.WriteHeader(200)
+}
+
+func (ps *GenState) PreviewClose(w http.ResponseWriter, r *http.Request) {
+	SetContentType(w, ContentType_Html)
+	w.Write([]byte(`<div id="modal"></div>`))
+}
+
+func (ps *GenState) PreviewOpen(w http.ResponseWriter, r *http.Request) {
+	SetContentType(w, ContentType_Html)
+	content := components.ModalContent()
+	modal := components.Modal("previw test", content, previewClose())
+	modal.Render(r.Context(), w)
 }
 
 func PromptModuleAccess() *GenState {
@@ -259,12 +274,21 @@ func imgDelUrl(id string) string {
 	return fmt.Sprintf("/prompt/img/del/%s", id)
 }
 
+func previewOpen() string {
+	return "/preview/open"
+}
+func previewClose() string {
+	return "/preview/close"
+}
+
 func (gs *GenState) LoadFns() HttpFuncMap {
 	return HttpFuncMap{
-		"/gen_page":            gs.GenPage,
-		"/prompt":              gs.PromptInput,
-		"/prompt/commit":       gs.PromptCommit,
-		"/prompt/img":          gs.FetchImage,
-		"/prompt/img/del/{id}": gs.DeleteImage,
+		"/gen_page":                   gs.GenPage,
+		"/prompt":                     gs.PromptInput,
+		"/prompt/commit":              gs.PromptCommit,
+		"/prompt/img":                 gs.FetchImage,
+		"/prompt/img/del/{id}":        gs.DeleteImage,
+		templ.SafeURL(previewOpen()):  gs.PreviewOpen,
+		templ.SafeURL(previewClose()): gs.PreviewClose,
 	}
 }

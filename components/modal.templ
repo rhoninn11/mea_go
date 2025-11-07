@@ -1,0 +1,83 @@
+package components
+
+templ Modal(title string, content templ.Component, close_link string) {
+    <div 
+        id="modal" 
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+        hx-on:click="if(event.target === this) htmx.trigger('#modal', 'closeModal')"
+    >
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 transform transition-all">
+            <!-- Header -->
+            <div class="flex items-center justify-between p-4 border-b">
+                <h3 class="text-lg font-semibold text-gray-900">{ title }</h3>
+                <button 
+                    type="button"
+                    class="text-gray-400 hover:text-gray-600 transition-colors"
+                    hx-trigger="click"
+                    hx-get={close_link}
+                    hx-swap="outerHTML"
+                    hx-target="#modal"
+                >
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Content -->
+            <div class="p-6">
+                @content
+            </div>
+            
+            <!-- Footer (opcjonalnie) -->
+            <div class="flex justify-end gap-2 p-4 border-t bg-gray-50">
+                <button 
+                    type="button"
+                    class="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded transition-colors"
+                    hx-get={close_link}
+                    hx-swap="outerHTML"
+                    hx-target="#modal"
+                >
+                    Anuluj
+                </button>
+                <button 
+                    type="button"
+                    class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                >
+                    Zapisz
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+templ ModalContent() {
+    <p class="text-gray-600">
+        To jest przykładowa treść modala. Możesz tu wstawić dowolny content.
+    </p>
+    <div class="mt-4">
+        <input 
+            type="text" 
+            placeholder="Wpisz coś..."
+            class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+    </div>
+}
+
+templ ModalDemo(open_link string) {
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-6">HTMX Modal Demo</h1>
+        
+        <button 
+            class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+            hx-get={open_link}
+            hx-target="#modal"
+            hx-swap="outerHTML"
+        >
+            Otwórz Modal
+        </button>
+        
+        <!-- Miejsce na modal -->
+        <div id="modal"></div>
+    </div>
+}
