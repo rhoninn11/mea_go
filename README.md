@@ -8,3 +8,9 @@ go run cmd/simple_client/main.go
 - services
 - clis
 - wasm - as an alternative for js? [blog](https://golangbot.com/go-webassembly-dom-access/)
+
+TODO:
+- improve image spawn
+- improve image deletion
+- left/right jumping in previev mode
+- prompt preservetion

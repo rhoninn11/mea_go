@@ -6,14 +6,13 @@ templ Modal(title string, content templ.Component, close_link string) {
         class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
         hx-on:click="if(event.target === this) htmx.trigger('#modal', 'closeModal')"
     >
-        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 transform transition-all">
+        <div class="flex flex-col items-center bg-white rounded-lg shadow-xl max-w-md w-full mx-4 transform transition-all">
             <!-- Header -->
             <div class="flex items-center justify-between p-4 border-b">
-                <h3 class="text-lg font-semibold text-gray-900">{ title }</h3>
                 <button 
                     type="button"
                     class="text-gray-400 hover:text-gray-600 transition-colors"
-                    hx-trigger="click"
+                    hx-trigger="click, keyup[key=='Escape'] from:body"
                     hx-get={close_link}
                     hx-swap="outerHTML"
                     hx-target="#modal"
@@ -64,20 +63,35 @@ templ ModalContent() {
     </div>
 }
 
-templ ModalDemo(open_link string) {
+templ ModalButton(openLink ModalOpener, inside templ.Component) {
+    <button 
+        class="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+        hx-get={openLink.LinkToContent}
+        hx-target={openLink.IDRef}
+        hx-swap="outerHTML"
+    >
+        @inside
+    </button>
+}
+templ Pixelart() {
+    <div class="font-mono text-[8px] leading-[4px]">
+        <p>
+            line___I<br>
+            line__II<br>
+            line_III<br>
+            line__IV<br>
+            line___V<br>
+            line__VI<br>
+            line_VII<br>
+            lineVIII
+        </p>
+    </div>
+}
+
+        // @ModalButton(openLink, Pixelart())
+templ ModalIsland(openLink ModalOpener) {
     <div class="max-w-4xl mx-auto">
         <h1 class="text-3xl font-bold mb-6">HTMX Modal Demo</h1>
-        
-        <button 
-            class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-            hx-get={open_link}
-            hx-target="#modal"
-            hx-swap="outerHTML"
-        >
-            Otwórz Modal
-        </button>
-        
-        <!-- Miejsce na modal -->
-        <div id="modal"></div>
+        <div id={openLink.IDName}></div>
     </div>
 }

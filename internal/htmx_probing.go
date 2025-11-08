@@ -39,10 +39,6 @@ func init() {
 	}
 }
 
-func SetContentType[ValT ~string](w http.ResponseWriter, val ValT) {
-	w.Header().Set(HContentType, string(val))
-}
-
 func (s *State) AxisFn(w http.ResponseWriter, r *http.Request) {
 	dir := mojUkladOdniesienia[s.keys[s.lastUsage]]
 	text := dir.LatentVector

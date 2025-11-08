@@ -31,7 +31,15 @@ func PageWithSidebar(main templ.Component) templ.Component {
 
 func NoCacheMiddleware(base http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Add(HCacheControl, "no-cahce")
+		SetCacheControl(w, CacheType_NoCache)
 		base.ServeHTTP(w, r)
 	})
+}
+
+func UniqueModal(link string) components.ModalOpener {
+	return components.ModalOpener{
+		IDName:        "modal",
+		IDRef:         "#modal",
+		LinkToContent: link,
+	}
 }

@@ -146,8 +146,15 @@ func (ps *GenState) GenPage(w http.ResponseWriter, r *http.Request) {
 
 	lastElem := colNum - 1
 	var showedImgNum = 0
+
+	prevBtn := components.Pixelart()
+
 	for i, id := range ps.imageIds {
-		imgComp := components.JustImg(imgUrl(id), imgDelUrl(id))
+		previewLink := JoinPath(PreviewOpen().Prefix, id)
+		forPreview := UniqueModal(previewLink)
+		forPreviewBtn := components.ModalButton(forPreview, prevBtn)
+		imgComp := components.JustImg(imgUrl(id), imgDelUrl(id), forPreviewBtn)
+
 		elemIdx := i % colNum
 		row[elemIdx] = imgComp
 		if elemIdx == lastElem {
@@ -164,9 +171,12 @@ func (ps *GenState) GenPage(w http.ResponseWriter, r *http.Request) {
 
 	rows = append(rows, PromptEditor("prompt_editor"))
 	feed := components.FeedColumn(rows, "imgs")
-	modal_demo := components.ModalDemo(previewOpen())
-	exp_wrap := components.FeedColumn([]templ.Component{feed, modal_demo}, "imgs_with_modal")
-	wholePage := PageWithSidebar(exp_wrap)
+
+	wrap := components.FeedColumn([]templ.Component{
+		feed,
+		components.ModalIsland(UniqueModal("")),
+	}, "modal_feed")
+	wholePage := PageWithSidebar(wrap)
 	wholePage.Render(context.Background(), w)
 }
 
@@ -191,7 +201,7 @@ func (ps *GenState) PromptCommit(w http.ResponseWriter, r *http.Request) {
 	SetContentType(w, ContentType_Html)
 	feed := components.FeedColumn(
 		[]templ.Component{
-			components.JustImg(imgUrl(id), imgDelUrl(id)),
+			components.JustImg(imgUrl(id), imgDelUrl(id), components.Block(888)),
 			PromptEditor("prompt_editor"),
 		}, "xd")
 	feed.Render(context.Background(), w)
@@ -255,9 +265,16 @@ func (ps *GenState) PreviewClose(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ps *GenState) PreviewOpen(w http.ResponseWriter, r *http.Request) {
+	var id string
+
 	SetContentType(w, ContentType_Html)
-	content := components.ModalContent()
-	modal := components.Modal("previw test", content, previewClose())
+	if id = r.PathValue("id"); id == "" {
+		InformError(fmt.Errorf("failed to extract id"), &w)
+	}
+
+	fmt.Printf("+++ opening preview for %s\n", id)
+	content := components.BigImg(imgUrl(id))
+	modal := components.Modal("preview", content, PreviewClose().EntryPoint)
 	modal.Render(r.Context(), w)
 }
 
@@ -274,21 +291,33 @@ func imgDelUrl(id string) string {
 	return fmt.Sprintf("/prompt/img/del/%s", id)
 }
 
-func previewOpen() string {
-	return "/preview/open"
+type LinkBind struct {
+	Prefix     string
+	EntryPoint string
 }
-func previewClose() string {
-	return "/preview/close"
+
+func PreviewOpen() LinkBind {
+	return LinkBind{
+		Prefix:     "/preview/open",
+		EntryPoint: "/preview/open/{id}",
+	}
+}
+
+func PreviewClose() LinkBind {
+	return LinkBind{
+		Prefix:     "/preview/close",
+		EntryPoint: "/preview/close/{id}",
+	}
 }
 
 func (gs *GenState) LoadFns() HttpFuncMap {
 	return HttpFuncMap{
-		"/gen_page":                   gs.GenPage,
-		"/prompt":                     gs.PromptInput,
-		"/prompt/commit":              gs.PromptCommit,
-		"/prompt/img":                 gs.FetchImage,
-		"/prompt/img/del/{id}":        gs.DeleteImage,
-		templ.SafeURL(previewOpen()):  gs.PreviewOpen,
-		templ.SafeURL(previewClose()): gs.PreviewClose,
+		"/gen_page":                              gs.GenPage,
+		"/prompt":                                gs.PromptInput,
+		"/prompt/commit":                         gs.PromptCommit,
+		"/prompt/img":                            gs.FetchImage,
+		"/prompt/img/del/{id}":                   gs.DeleteImage,
+		templ.SafeURL(PreviewOpen().EntryPoint):  gs.PreviewOpen,
+		templ.SafeURL(PreviewClose().EntryPoint): gs.PreviewClose,
 	}
 }
