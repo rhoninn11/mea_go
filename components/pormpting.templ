@@ -1,14 +1,14 @@
 package components
 
-templ PromptPad(id string, feedID string){
+templ PromptPad(id string, feedID string, value string){
     <div class="flex flex-col bg-slate-600 p-4 m-1">
         <textarea class="bg-slate-400" name={id} 
-            hx-post="/prompt"></textarea>
+            hx-post="/prompt">{value}</textarea>
     </div>
 }
 
 templ NoIdPromptPad(){
-    @PromptPad("0", "disabled")
+    @PromptPad("0", "disabled", "no id prompt pad")
 }
 
 templ FeedColumn(rows []templ.Component, feedID string) {
@@ -28,15 +28,14 @@ templ GenButton(feedId string) {
     </div>
 }
 
-templ JustImg(imgUrl string, delUrl string, preview templ.Component) {
+templ JustImg(imgUrl string, delUrl string, leftCorner templ.Component, rightCorner templ.Component) {
     <div class="relative">
         <img src={imgUrl} class="size-64">
-        <div class="absolute top-4 right-4 bg-slate-900 text-slate-300 size-8 text-lg flex items-center justify-center rounded-lg"
-            hx-get={delUrl} hx-swap="none">
-            <div>🗑</div>
-        </div>
         <div class="absolute top-4 left-4 bg-slate-900 text-slate-300 size-8 text-lg flex items-center justify-center rounded-lg">
-            @preview
+            @leftCorner
+        </div>
+        <div class="absolute top-4 right-4 bg-slate-900 text-slate-300 size-8 text-lg flex items-center justify-center rounded-lg">
+            @rightCorner
         </div>
     </div>
 }

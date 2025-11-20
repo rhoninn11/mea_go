@@ -7,21 +7,7 @@ import (
 	"mea_go/components"
 	"mea_go/internal"
 	"net/http"
-
-	"github.com/a-h/templ"
 )
-
-// /page/gen
-func GeneratePage(w http.ResponseWriter, r *http.Request) {
-	var content templ.Component
-	defer func() {
-		internal.SetContentType(w, internal.ContentType_Html)
-		fullPage := internal.PageWithSidebar(content)
-		fullPage.Render(context.Background(), w)
-	}()
-
-	content = internal.PromptEditor("unique-id")
-}
 
 func RecivePrompt(w http.ResponseWriter, r *http.Request) {
 

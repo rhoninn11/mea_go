@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"mea_go/components"
 	"net/http"
+	"strings"
 
 	"github.com/a-h/templ"
 )
@@ -19,7 +20,12 @@ func RegisterHandler(endpoint templ.SafeURL, fn HttpFunc) {
 		fmt.Println("+++ called ", endpoint, "+++")
 		fn(w, r)
 	}
-	endpotins = append(endpotins, endpoint)
+
+	bits := strings.Split(string(endpoint), "/")
+	if len(bits) == 2 {
+		endpotins = append(endpotins, endpoint)
+	}
+
 	http.HandleFunc(string(endpoint), middle)
 }
 
