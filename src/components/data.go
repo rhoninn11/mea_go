@@ -5,3 +5,9 @@ type ModalOpener struct {
 	IDRef         string
 	LinkToContent string
 }
+
+type ActionLink struct {
+	IDName       string
+	IDRef        string
+	LinkToAction string
+}

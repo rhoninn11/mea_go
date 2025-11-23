@@ -3,18 +3,18 @@ testdata_dir = "testdata"
 tmp_dir = "tmp"
 
 [build]
+  cmd = "make css templ && mkdir -p build && go build -o ./build/mea_client ./src/cmd/mea_client/main.go"
+  bin = "build/mea_client"
   args_bin = []
-  bin = "./tmp/main"
-  cmd = "make build_site"
   delay = 1000
-  exclude_dir = ["assets", "tmp", "vendor", "testdata", "fs"]
+  exclude_dir = ["assets", "tmp", "fs"]
   exclude_file = []
-  exclude_regex = ["_test.go" "_templ.go"]
+  exclude_regex = ["_test.go", "_templ.go"]
   exclude_unchanged = false
   follow_symlink = false
   full_bin = ""
   include_dir = []
-  include_ext = ["go", "tpl", "tmpl", "templ", "html"]
+  include_ext = ["go", "templ", "html"]
   include_file = []
   kill_delay = "0s"
   log = "build-errors.log"

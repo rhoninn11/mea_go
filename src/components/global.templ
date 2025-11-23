@@ -1,5 +1,6 @@
 package components
 
+
 // export PATH="$PATH:$(go env GOPATH)/bin"
 templ Global(name string, body templ.Component) {
 	<!DOCTYPE html>
@@ -75,4 +76,15 @@ templ HistoryWhole(records []string) {
 			@HistoryPrint(a)
 		}
 	</div>
+}
+
+templ ButtonAction(openLink ActionLink, inside templ.Component) {
+    <button 
+        class="px-2 py-1 bg-slate-900 text-slate-300 rounded hover:bg-slate-700 transition-colors"
+        hx-get={openLink.LinkToAction}
+        hx-target={openLink.IDRef}
+        hx-swap="outerHTML"
+    >
+        @inside
+    </button>
 }

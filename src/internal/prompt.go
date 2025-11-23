@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math"
-	"mea_go/components"
+	"mea_go/src/components"
 	"net/http"
 	"os"
 	"slices"
@@ -67,7 +67,7 @@ func (gs *GenState) init() {
 	}
 
 	func(gs *GenState) {
-		imgDir := "_fs/img"
+		imgDir := DirImage()
 		entries, err := os.ReadDir(imgDir)
 		if err != nil {
 			log.Fatalln("scaning imgs", err.Error())
@@ -146,7 +146,8 @@ func (gs *GenState) GenPage(w http.ResponseWriter, r *http.Request) {
 	rows := make([]templ.Component, 0, rowNum)
 	// row := make([]templ.Component, colNum)
 
-	prevBtn := components.Pixelart()
+	prevBtn := components.PixelartHold()
+	delAscii := components.Pixelart()
 	var lastImage templ.Component
 	var images []templ.Component
 	var drawImages int = 0
@@ -160,8 +161,14 @@ func (gs *GenState) GenPage(w http.ResponseWriter, r *http.Request) {
 		previewLink := JoinPath(PreviewOpen().Prefix, imgId)
 		forPreview := UniqueModal(previewLink)
 		forPreviewBtn := components.ModalButton(forPreview, prevBtn)
-		forPreviewBtn1 := components.ModalButton(forPreview, prevBtn)
-		lastImage = components.JustImg(imgUrl(imgId), imgDelUrl(imgId), forPreviewBtn, forPreviewBtn1)
+
+		aLink := components.ActionLink{
+			LinkToAction: fmt.Sprintf(ImageDelete().TemplateStr, imgId),
+			IDName:       fmt.Sprintf("deleter_%s", imgId),
+			IDRef:        "false_id",
+		}
+		delBtn := components.ButtonAction(aLink, delAscii)
+		lastImage = components.JustImg(imgUrl(imgId), imgDelUrl(imgId), forPreviewBtn, delBtn)
 		images = append(images, lastImage)
 
 	}
@@ -314,8 +321,9 @@ func imgDelUrl(id string) string {
 }
 
 type LinkBind struct {
-	Prefix     string
-	EntryPoint string
+	Prefix      string
+	EntryPoint  string
+	TemplateStr string
 }
 
 func PreviewOpen() LinkBind {
@@ -332,13 +340,21 @@ func PreviewClose() LinkBind {
 	}
 }
 
+func ImageDelete() LinkBind {
+	return LinkBind{
+		Prefix:      "/prompt/img/del",
+		EntryPoint:  "/prompt/img/del/{id}",
+		TemplateStr: "/prompt/img/del/%s",
+	}
+}
+
 func (gs *GenState) LoadFns() HttpFuncMap {
 	return HttpFuncMap{
 		"/gen_page":                              gs.GenPage,
 		"/prompt":                                gs.PromptInput,
 		"/prompt/commit":                         gs.PromptCommit,
 		"/prompt/img":                            gs.FetchImage,
-		"/prompt/img/del/{id}":                   gs.DeleteImage,
+		templ.SafeURL(ImageDelete().EntryPoint):  gs.DeleteImage,
 		templ.SafeURL(PreviewOpen().EntryPoint):  gs.PreviewOpen,
 		templ.SafeURL(PreviewClose().EntryPoint): gs.PreviewClose,
 	}

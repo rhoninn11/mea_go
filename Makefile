@@ -1,5 +1,8 @@
 
 
+css:
+	tailwindcss -i ./static/tailwind.css -o ./static/style.css
+
 templ:
 	go tool templ generate
 
@@ -9,8 +12,9 @@ serve: templ
 dev: templ css
 	go run cmd/serve_site/main.go
 
-css:
-	tailwindcss -i ./static/tailwind.css -o ./static/style.css
+air:
+	@air
+
 
 build_site: templ css
 	go build -o ./tmp/main cmd/serve_site/main.go

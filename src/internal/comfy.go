@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	mea_gen_d "mea_go/api/mea.gen.d"
+	mea_gen_d "mea_go/src/api/mea.gen.d"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"

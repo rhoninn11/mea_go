@@ -4,7 +4,7 @@ import (
 	"image"
 	"image/color"
 
-	mea_gen_d "mea_go/api/mea.gen.d"
+	mea_gen_d "mea_go/src/api/mea.gen.d"
 )
 
 func ImgProtoToGo(protoImg *mea_gen_d.Image) *image.RGBA {

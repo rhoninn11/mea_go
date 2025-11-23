@@ -3,7 +3,7 @@ package internal
 import (
 	"context"
 	"fmt"
-	"mea_go/components"
+	"mea_go/src/components"
 	"net/http"
 	"time"
 )

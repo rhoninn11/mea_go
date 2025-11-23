@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"mea_go/components"
-	"mea_go/internal"
+	"mea_go/src/components"
+	"mea_go/src/internal"
 	"net/http"
 )
 

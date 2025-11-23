@@ -65,7 +65,7 @@ templ ModalContent() {
 
 templ ModalButton(openLink ModalOpener, inside templ.Component) {
     <button 
-        class="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+        class="px-2 py-1 bg-slate-900 text-slate-300 rounded hover:bg-slate-700 transition-colors"
         hx-get={openLink.LinkToContent}
         hx-target={openLink.IDRef}
         hx-swap="outerHTML"

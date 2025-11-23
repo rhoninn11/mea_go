@@ -2,7 +2,7 @@ package internal
 
 import (
 	"fmt"
-	"mea_go/components"
+	"mea_go/src/components"
 	"net/http"
 	"strings"
 

@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-const Fs_Path = "_fs"
+const Fs_Path = "fs"
 
 func DirImage() string {
 	return JoinPath(Fs_Path, "img")

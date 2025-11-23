@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"image/png"
-	mea_gen_d "mea_go/api/mea.gen.d"
+	mea_gen_d "mea_go/src/api/mea.gen.d"
 	"os"
 	"time"
 )
