@@ -1,5 +1,6 @@
 package components
 
+
 templ Modal(title string, content templ.Component, close_link string) {
     <div 
         id="modal" 
@@ -67,7 +68,7 @@ templ ModalButton(openLink ModalOpener, inside templ.Component) {
     <button 
         class="px-2 py-1 bg-slate-900 text-slate-300 rounded hover:bg-slate-700 transition-colors"
         hx-get={openLink.LinkToContent}
-        hx-target={openLink.IDRef}
+        hx-target={openLink.Target}
         hx-swap="outerHTML"
     >
         @inside

@@ -39,8 +39,20 @@ type GenState struct {
 
 type FlowData struct {
 	slots PromptSlots
-	rowID string
-	colID string
+	rowId string
+	colId string
+}
+
+type htmxId struct {
+	justName string
+	hashName string
+}
+
+func NamedId(name string) htmxId {
+	return htmxId{
+		justName: name,
+		hashName: fmt.Sprintf("#%s", name),
+	}
 }
 
 var memory GenState
@@ -66,6 +78,7 @@ func (gs *GenState) init() {
 		gs.prompts[slot] = ""
 	}
 
+	var loadeImgsNum int = 0
 	func(gs *GenState) {
 		imgDir := DirImage()
 		entries, err := os.ReadDir(imgDir)
@@ -87,11 +100,13 @@ func (gs *GenState) init() {
 				continue
 			}
 
-			log.Default().Println("INFO: ", imgPath, " loaded")
+			loadeImgsNum += 1
 			gs.imageIds = append(gs.imageIds, id)
 			gs.imageData[id] = data
 		}
 	}(gs)
+
+	log.Default().Println("INFO: ", fmt.Sprintf("loaded (%d) imgs on init", loadeImgsNum))
 }
 
 func (gs *GenState) PromptEditor(editorID string) templ.Component {
@@ -151,13 +166,13 @@ func (gs *GenState) GenPage(w http.ResponseWriter, r *http.Request) {
 	var lastImage templ.Component
 	var images []templ.Component
 	var drawImages int = 0
+	var dsId = NamedId("delete_sink")
 	for _, imgId := range gs.imageIds {
 		if imgId == "deleted" {
 			continue
 		}
 
 		drawImages += 1
-		fmt.Printf("adding image: %d\n", drawImages)
 		previewLink := JoinPath(PreviewOpen().Prefix, imgId)
 		forPreview := UniqueModal(previewLink)
 		forPreviewBtn := components.ModalButton(forPreview, prevBtn)
@@ -165,7 +180,7 @@ func (gs *GenState) GenPage(w http.ResponseWriter, r *http.Request) {
 		aLink := components.ActionLink{
 			LinkToAction: fmt.Sprintf(ImageDelete().TemplateStr, imgId),
 			IDName:       fmt.Sprintf("deleter_%s", imgId),
-			IDRef:        "false_id",
+			Target:       dsId.hashName,
 		}
 		delBtn := components.ButtonAction(aLink, delAscii)
 		lastImage = components.JustImg(imgUrl(imgId), imgDelUrl(imgId), forPreviewBtn, delBtn)
@@ -193,7 +208,7 @@ func (gs *GenState) GenPage(w http.ResponseWriter, r *http.Request) {
 		off += 4
 	}
 
-	rows = append(rows, gs.PromptEditor("prompt_editor"))
+	rows = append(rows, gs.PromptEditor("prompt_editor"), components.JustId(dsId.justName))
 	feed := components.FeedColumn(rows, "imgs")
 	_ = feed
 	wrap := components.FeedColumn([]templ.Component{

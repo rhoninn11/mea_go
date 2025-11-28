@@ -82,9 +82,13 @@ templ ButtonAction(openLink ActionLink, inside templ.Component) {
     <button 
         class="px-2 py-1 bg-slate-900 text-slate-300 rounded hover:bg-slate-700 transition-colors"
         hx-get={openLink.LinkToAction}
-        hx-target={openLink.IDRef}
+        hx-target={openLink.Target}
         hx-swap="outerHTML"
     >
         @inside
     </button>
+}
+
+templ JustId(id string){
+    <div id={id}></div>
 }

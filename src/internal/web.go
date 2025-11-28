@@ -45,7 +45,7 @@ func NoCacheMiddleware(base http.Handler) http.Handler {
 func UniqueModal(link string) components.ModalOpener {
 	return components.ModalOpener{
 		IDName:        "modal",
-		IDRef:         "#modal",
+		Target:        "#modal",
 		LinkToContent: link,
 	}
 }
