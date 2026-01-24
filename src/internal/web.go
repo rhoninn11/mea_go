@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"mea_go/src/components"
 	"net/http"
-	"strings"
 
 	"github.com/a-h/templ"
 )
@@ -15,14 +14,15 @@ type HttpFunc = func(ResponseWriter, *Request)
 
 var endpotins = make([]templ.SafeURL, 0, 16)
 
-func RegisterHandler(endpoint templ.SafeURL, fn HttpFunc) {
+func RegisterHandler(endpoint templ.SafeURL, fnPack HttpFuncPack) {
 	middle := func(w ResponseWriter, r *Request) {
-		fmt.Println("+++ called ", endpoint, "+++")
-		fn(w, r)
+		if fnPack.Show {
+			fmt.Println("+++ called ", endpoint, "+++")
+		}
+		fnPack.Fn(w, r)
 	}
 
-	bits := strings.Split(string(endpoint), "/")
-	if len(bits) == 2 {
+	if fnPack.Show {
 		endpotins = append(endpotins, endpoint)
 	}
 
@@ -40,12 +40,4 @@ func NoCacheMiddleware(base http.Handler) http.Handler {
 		SetCacheControl(w, CacheType_NoCache)
 		base.ServeHTTP(w, r)
 	})
-}
-
-func UniqueModal(link string) components.ModalOpener {
-	return components.ModalOpener{
-		IDName:        "modal",
-		Target:        "#modal",
-		LinkToContent: link,
-	}
 }

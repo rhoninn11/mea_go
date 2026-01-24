@@ -6,6 +6,7 @@ import (
 	"image/png"
 	mea_gen_d "mea_go/src/api/mea.gen.d"
 	"os"
+	"slices"
 	"time"
 )
 
@@ -15,19 +16,37 @@ func uniqueName() string {
 }
 func imageGen(gen *GenState, comfy *ComfyData) (string, error) {
 	var _plug mea_gen_d.Empty
-	firsSlot := gen.promptSlots[0]
-	prompt := gen.prompts[firsSlot]
 
 	opt := comfy.Options
 	serv := comfy.Service
 
-	prompcik := mea_gen_d.SlotedPrompt{
-		Slot:   mea_gen_d.Slot_a,
-		Prompt: prompt,
+	usedPrompts := make([]string, 0, 4)
+	for name, slot := range SlotMapping {
+		slotedPrompt := mea_gen_d.SlotedPrompt{
+			Slot:   slot,
+			Prompt: gen.prompts[slot],
+		}
+		if slotedPrompt.Prompt == "" {
+			continue
+		}
+		usedPrompts = append(usedPrompts, name)
+		if _, err := serv.SetPrompt(comfy.Ctx, &slotedPrompt); err != nil {
+			return "", fmt.Errorf("failed to set prompt (%s) | %v", name, err)
+		}
 	}
-	if _, err := serv.SetPrompt(comfy.Ctx, &prompcik); err != nil {
-		return "", fmt.Errorf("failed to set prompt | %v", err)
-	}
+	slices.Sort(usedPrompts)
+	fmt.Println("+++ used prompts: ", usedPrompts)
+
+	// firsSlot := gen.promptSlots[0]
+	// prompt := gen.prompts[firsSlot]
+
+	// prompcik := mea_gen_d.SlotedPrompt{
+	// 	Slot:   mea_gen_d.Slot_a,
+	// 	Prompt: prompt,
+	// }
+	// if _, err := serv.SetPrompt(comfy.Ctx, &prompcik); err != nil {
+	// 	return "", fmt.Errorf("failed to set prompt | %v", err)
+	// }
 
 	if _, err := serv.SetOptions(comfy.Ctx, opt); err != nil {
 		return "", fmt.Errorf("!!! options failed, %v", err)
@@ -46,7 +65,7 @@ func imageGen(gen *GenState, comfy *ComfyData) (string, error) {
 	}
 	gen.addImage(imgName, buffer.Bytes())
 
-	fileName := fmt.Sprintf("_fs/img/%s.png", imgName)
+	fileName := JoinPath(DirImage(), PngFilename(imgName))
 	file, err := os.Create(fileName)
 	if err != nil {
 		return "", fmt.Errorf("!!! file failed to open %s, %v", fileName, err)

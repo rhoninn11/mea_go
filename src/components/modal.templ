@@ -64,11 +64,19 @@ templ ModalContent() {
     </div>
 }
 
-templ ModalButton(openLink ModalOpener, inside templ.Component) {
+templ KeyDebugScript() {
+    <script>
+        document.addEventListener('keydown', function(event) {
+            console.log('Key:', event.key, 'Code:', event.code);
+        });
+    </script>
+}
+
+templ ModalButton(desc ModalDesc, inside templ.Component) {
     <button 
         class="px-2 py-1 bg-slate-900 text-slate-300 rounded hover:bg-slate-700 transition-colors"
-        hx-get={openLink.LinkToContent}
-        hx-target={openLink.Target}
+        hx-get={desc.WithLink}
+        hx-target={desc.Hid.TargName}
         hx-swap="outerHTML"
     >
         @inside
@@ -102,10 +110,10 @@ templ Pixelart() {
         </p>
     </div>
 }
-        // @ModalButton(openLink, Pixelart())
-templ ModalIsland(openLink ModalOpener) {
+
+templ ModalLayer(hid HtmxId) {
     <div class="max-w-4xl mx-auto">
         <h1 class="text-3xl font-bold mb-6">HTMX Modal Demo</h1>
-        <div id={openLink.IDName}></div>
+        <div id={hid.JustName}></div>
     </div>
 }

@@ -43,6 +43,8 @@ const (
 	PROD  = "PROD"
 )
 
+var registerFn = internal.RegisterHandler
+
 func main() {
 	var mode = DEBUG
 	_ = mode
@@ -56,17 +58,11 @@ func main() {
 	static = internal.NoCacheMiddleware(static)
 	http.Handle("/static/", static)
 
-	deeper := internal.PromptModuleAccess()
-	register := internal.RegisterHandler
+	promptModule := internal.PromptModuleAccess()
 
-	sampleState := internal.GetGlobState()
-	register("/axis", sampleState.AxisFn)
-	register("/history", sampleState.HistoryFn)
-	register("/loading", sampleState.LoadingPage)
-
-	mapping := deeper.LoadFns()
+	mapping := promptModule.LoadFns()
 	for k, v := range mapping {
-		register(k, v)
+		registerFn(k, v)
 	}
 
 	var url = fmt.Sprintf("http://%s/%s", base, "history")

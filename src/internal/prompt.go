@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	mea_gen_d "mea_go/src/api/mea.gen.d"
 	"mea_go/src/components"
 	"net/http"
 	"os"
@@ -22,16 +23,36 @@ const (
 	SLOT_C = "slot_c"
 )
 
-type HttpFuncMap = map[templ.SafeURL]HttpFunc
+type SlotMap map[string]mea_gen_d.Slot
 
-type PromptMap = map[string]string
-type ImgMap = map[string][]byte
+var SlotMapping = SlotMap{
+	SLOT_A: mea_gen_d.Slot_a,
+	SLOT_B: mea_gen_d.Slot_b,
+	SLOT_C: mea_gen_d.Slot_c,
+}
+
+type HttpFuncPack struct {
+	Fn   HttpFunc
+	Show bool
+}
+type HttpFuncMap = map[templ.SafeURL]HttpFuncPack
+
+type PromptMap = map[mea_gen_d.Slot]string
+
+type ImgMetadata struct {
+	prompts []string `yaml:"prompts"`
+}
+type ImgData struct {
+	bytes []byte
+	meta  ImgMetadata
+}
+type ImgMap = map[string]ImgData
 
 type PromptSlots = []string
 
 type GenState struct {
 	prompts     PromptMap
-	promptSlots []string
+	promptSlots []mea_gen_d.Slot
 	comfyData   *ComfyData
 	imageData   ImgMap
 	imageIds    []string
@@ -43,15 +64,61 @@ type FlowData struct {
 	colId string
 }
 
-type htmxId struct {
-	justName string
-	hashName string
+type LinkBind struct {
+	Prefix     string
+	EntryPoint string
+	FmtStr     string
 }
 
-func NamedId(name string) htmxId {
-	return htmxId{
-		justName: name,
-		hashName: fmt.Sprintf("#%s", name),
+func PreviewOpen() LinkBind {
+	return LinkBind{
+		Prefix:     "/preview/open",
+		EntryPoint: "/preview/open/{id}",
+		FmtStr:     "/preview/open/%s",
+	}
+}
+
+func PreviewClose() LinkBind {
+	return LinkBind{
+		Prefix:     "/preview/close",
+		EntryPoint: "/preview/close/{id}",
+	}
+}
+
+func ImageDelete() LinkBind {
+	return LinkBind{
+		Prefix:     "/prompt/img/del",
+		EntryPoint: "/prompt/img/del/{id}",
+		FmtStr:     "/prompt/img/del/%s",
+	}
+}
+
+type HtmxId = components.HtmxId
+type ModalDesc = components.ModalDesc
+
+func NamedId(name string) HtmxId {
+	return HtmxId{
+		JustName: name,
+		TargName: fmt.Sprintf("#%s", name),
+	}
+}
+
+func ModalHid() HtmxId {
+	return NamedId("modal")
+}
+
+func EditorHid() HtmxId {
+	return NamedId("prompt_editor")
+}
+
+func DeleteSinkHid() HtmxId {
+	return NamedId("delete_sink")
+}
+
+func InvokeModal(link string) ModalDesc {
+	return ModalDesc{
+		Hid:      ModalHid(),
+		WithLink: link,
 	}
 }
 
@@ -61,14 +128,23 @@ func init() {
 	memory.init()
 }
 
+var emptyMetadata = ImgMetadata{prompts: []string{"", "", ""}}
+
 // hmm maybe simple squil would be adequate, like SQLite or Postgress
 func (gs *GenState) addImage(id string, data []byte) {
 	gs.imageIds = append(gs.imageIds, id)
-	gs.imageData[id] = data
+	gs.imageData[id] = ImgData{
+		meta:  emptyMetadata,
+		bytes: data,
+	}
 }
 
 func (gs *GenState) init() {
-	gs.promptSlots = []string{SLOT_A, SLOT_B, SLOT_C}
+	gs.promptSlots = []mea_gen_d.Slot{
+		mea_gen_d.Slot_a,
+		mea_gen_d.Slot_b,
+		mea_gen_d.Slot_c,
+	}
 
 	size := len(gs.promptSlots)
 	gs.prompts = make(PromptMap, size)
@@ -91,9 +167,17 @@ func (gs *GenState) init() {
 			if !strings.HasSuffix(name, ".png") {
 				continue
 			}
+			basename := strings.TrimSuffix(name, ".png")
+			yamlFile := Filename(basename, "yaml")
+			_ = yamlFile
 
-			id := strings.TrimSuffix(name, ".png")
 			imgPath := strings.Join([]string{imgDir, name}, "/")
+			metadataPath := strings.Join([]string{imgDir, name}, "/")
+
+			var xd = ImgMetadata{prompts: []string{"", "", ""}}
+			if _, err := os.Stat(metadataPath); err != nil {
+
+			}
 
 			data, err := os.ReadFile(imgPath)
 			if panicker.HasError(err) {
@@ -101,29 +185,33 @@ func (gs *GenState) init() {
 			}
 
 			loadeImgsNum += 1
-			gs.imageIds = append(gs.imageIds, id)
-			gs.imageData[id] = data
+			gs.imageIds = append(gs.imageIds, basename)
+			gs.imageData[basename] = ImgData{
+				bytes: data,
+				meta:  xd,
+			}
 		}
 	}(gs)
 
 	log.Default().Println("INFO: ", fmt.Sprintf("loaded (%d) imgs on init", loadeImgsNum))
 }
 
-func (gs *GenState) PromptEditor(editorID string) templ.Component {
+func (gs *GenState) PromptEditor(hid HtmxId) templ.Component {
 	// calls := "/prompt"
 
-	padFromSlot := func(id string, slot string) templ.Component {
-		return components.PromptPad(id, slot, gs.prompts[slot])
+	padFromSlot := func(id string, slot mea_gen_d.Slot) templ.Component {
+		return components.PromptPad(id, gs.prompts[slot])
 	}
-	submmitBtn := components.GenButton(fmt.Sprintf("#%s", editorID))
+
+	submmitBtn := components.GenButton(hid.TargName)
 
 	editor := []templ.Component{
-		padFromSlot(SLOT_A, SLOT_A),
-		padFromSlot(SLOT_B, SLOT_B),
-		padFromSlot(SLOT_C, SLOT_C),
+		padFromSlot(SLOT_A, mea_gen_d.Slot_a),
+		padFromSlot(SLOT_B, mea_gen_d.Slot_b),
+		padFromSlot(SLOT_C, mea_gen_d.Slot_c),
 		submmitBtn,
 	}
-	return components.FeedColumn(editor, editorID)
+	return components.FeedColumn(editor, hid.JustName)
 }
 
 func (gs *GenState) PromptInput(w http.ResponseWriter, r *http.Request) {
@@ -135,8 +223,10 @@ func (gs *GenState) PromptInput(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		for slot, data := range r.Form {
+		for slotName, data := range r.Form {
 			prompt := strings.Join(data, "")
+			slot := SlotMapping[slotName]
+
 			if _, ok := gs.prompts[slot]; ok {
 				gs.prompts[slot] = prompt
 			} else {
@@ -166,21 +256,22 @@ func (gs *GenState) GenPage(w http.ResponseWriter, r *http.Request) {
 	var lastImage templ.Component
 	var images []templ.Component
 	var drawImages int = 0
-	var dsId = NamedId("delete_sink")
+
+	var imgDeleteBind = ImageDelete()
 	for _, imgId := range gs.imageIds {
 		if imgId == "deleted" {
 			continue
 		}
 
 		drawImages += 1
-		previewLink := JoinPath(PreviewOpen().Prefix, imgId)
-		forPreview := UniqueModal(previewLink)
-		forPreviewBtn := components.ModalButton(forPreview, prevBtn)
+		previewLink := fmt.Sprintf(PreviewOpen().FmtStr, imgId)
+		modalDesc := InvokeModal(previewLink)
+		forPreviewBtn := components.ModalButton(modalDesc, prevBtn)
 
 		aLink := components.ActionLink{
-			LinkToAction: fmt.Sprintf(ImageDelete().TemplateStr, imgId),
+			LinkToAction: fmt.Sprintf(imgDeleteBind.FmtStr, imgId),
 			IDName:       fmt.Sprintf("deleter_%s", imgId),
-			Target:       dsId.hashName,
+			Target:       DeleteSinkHid().TargName,
 		}
 		delBtn := components.ButtonAction(aLink, delAscii)
 		lastImage = components.JustImg(imgUrl(imgId), imgDelUrl(imgId), forPreviewBtn, delBtn)
@@ -207,15 +298,16 @@ func (gs *GenState) GenPage(w http.ResponseWriter, r *http.Request) {
 		imgsLeft -= 4
 		off += 4
 	}
-
-	rows = append(rows, gs.PromptEditor("prompt_editor"), components.JustId(dsId.justName))
-	feed := components.FeedColumn(rows, "imgs")
-	_ = feed
-	wrap := components.FeedColumn([]templ.Component{
-		feed,
-		components.ModalIsland(UniqueModal("")),
+	slices.Reverse(rows)
+	imgs := components.FeedColumn(rows, "imgs")
+	mainContent := components.FeedColumn([]templ.Component{
+		components.JustHid(DeleteSinkHid()),
+		gs.PromptEditor(EditorHid()),
+		imgs,
+		components.ModalLayer(ModalHid()),
 	}, "modal_feed")
-	wholePage := PageWithSidebar(wrap)
+
+	wholePage := PageWithSidebar(mainContent)
 	wholePage.Render(context.Background(), w)
 }
 
@@ -239,10 +331,12 @@ func (gs *GenState) PromptCommit(w http.ResponseWriter, r *http.Request) {
 
 	SetContentType(w, ContentType_Html)
 	something := components.Block(888)
+
+	promptId := NamedId("prompt_editor")
 	feed := components.FeedColumn(
 		[]templ.Component{
 			components.JustImg(imgUrl(id), imgDelUrl(id), something, something),
-			gs.PromptEditor("prompt_editor"),
+			gs.PromptEditor(promptId),
 		}, "xd")
 	feed.Render(context.Background(), w)
 }
@@ -261,7 +355,7 @@ func (ps *GenState) FetchImage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	SetContentType(w, ContentType_Html)
-	_, err := w.Write(imgData)
+	_, err := w.Write(imgData.bytes)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
@@ -335,42 +429,14 @@ func imgDelUrl(id string) string {
 	return fmt.Sprintf("/prompt/img/del/%s", id)
 }
 
-type LinkBind struct {
-	Prefix      string
-	EntryPoint  string
-	TemplateStr string
-}
-
-func PreviewOpen() LinkBind {
-	return LinkBind{
-		Prefix:     "/preview/open",
-		EntryPoint: "/preview/open/{id}",
-	}
-}
-
-func PreviewClose() LinkBind {
-	return LinkBind{
-		Prefix:     "/preview/close",
-		EntryPoint: "/preview/close/{id}",
-	}
-}
-
-func ImageDelete() LinkBind {
-	return LinkBind{
-		Prefix:      "/prompt/img/del",
-		EntryPoint:  "/prompt/img/del/{id}",
-		TemplateStr: "/prompt/img/del/%s",
-	}
-}
-
 func (gs *GenState) LoadFns() HttpFuncMap {
 	return HttpFuncMap{
-		"/gen_page":                              gs.GenPage,
-		"/prompt":                                gs.PromptInput,
-		"/prompt/commit":                         gs.PromptCommit,
-		"/prompt/img":                            gs.FetchImage,
-		templ.SafeURL(ImageDelete().EntryPoint):  gs.DeleteImage,
-		templ.SafeURL(PreviewOpen().EntryPoint):  gs.PreviewOpen,
-		templ.SafeURL(PreviewClose().EntryPoint): gs.PreviewClose,
+		"/gen_page":                              {gs.GenPage, true},
+		"/prompt":                                {gs.PromptInput, false},
+		"/prompt/commit":                         {gs.PromptCommit, false},
+		"/prompt/img":                            {gs.FetchImage, false},
+		templ.SafeURL(ImageDelete().EntryPoint):  {gs.DeleteImage, false},
+		templ.SafeURL(PreviewOpen().EntryPoint):  {gs.PreviewOpen, false},
+		templ.SafeURL(PreviewClose().EntryPoint): {gs.PreviewClose, false},
 	}
 }
