@@ -1,3 +1,3 @@
 [submodule "mea_proto"]
-	path = api/proto
+	path = src/api/proto
 	url = https://github.com/rhoninn11/mea_proto.git

@@ -1,6 +1,6 @@
 tmp
 fs
 build
-api/*.gen.d
+src/api/*.gen.d
 *_templ.go
 static/style.css
