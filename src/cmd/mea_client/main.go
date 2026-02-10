@@ -62,6 +62,7 @@ func main() {
 
 	mapping := promptModule.LoadFns()
 	for k, v := range mapping {
+		fmt.Println("halo", k, v)
 		registerFn(k, v)
 	}
 

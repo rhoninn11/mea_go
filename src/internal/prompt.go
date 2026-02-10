@@ -7,6 +7,7 @@ import (
 	"math"
 	mea_gen_d "mea_go/src/api/mea.gen.d"
 	"mea_go/src/components"
+	"mea_go/src/internal/txt2img"
 	"net/http"
 	"os"
 	"slices"
@@ -68,6 +69,13 @@ type LinkBind struct {
 	Prefix     string
 	EntryPoint string
 	FmtStr     string
+}
+
+func (lb *LinkBind) FmtLink(hmm ...any) string {
+	formatedLink := fmt.Sprintf(lb.FmtStr, hmm...)
+	fmt.Printf("|formated link - %s\n", formatedLink)
+	return formatedLink
+
 }
 
 func PreviewOpen() LinkBind {
@@ -203,7 +211,7 @@ func (gs *GenState) PromptEditor(hid HtmxId) templ.Component {
 		return components.PromptPad(id, gs.prompts[slot])
 	}
 
-	submmitBtn := components.GenButton(hid.TargName)
+	submmitBtn := txt2img.GenButton(hid.TargName)
 
 	editor := []templ.Component{
 		padFromSlot(SLOT_A, mea_gen_d.Slot_a),
@@ -239,6 +247,25 @@ func (gs *GenState) PromptInput(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 }
 
+func ImgComp(idImg string) templ.Component {
+	asciiOpen := components.PixelartHold()
+	asciiDel := components.Pixelart()
+	var open LinkBind = PreviewOpen()
+	var del LinkBind = ImageDelete()
+
+	previewLink := open.FmtLink(idImg)
+	modalDesc := InvokeModal(previewLink)
+	forPreviewBtn := components.ModalButton(modalDesc, asciiOpen)
+
+	aLink := components.ActionLink{
+		LinkToAction: del.FmtLink(idImg),
+		IDName:       fmt.Sprintf("deleter_%s", idImg),
+		Target:       DeleteSinkHid().TargName,
+	}
+	delBtn := components.ButtonAction(aLink, asciiDel)
+	return components.JustImg(imgUrl(idImg), imgDelUrl(idImg), forPreviewBtn, delBtn)
+}
+
 // show all results and editor
 func (gs *GenState) GenPage(w http.ResponseWriter, r *http.Request) {
 	SetContentType(w, ContentType_Html)
@@ -251,37 +278,22 @@ func (gs *GenState) GenPage(w http.ResponseWriter, r *http.Request) {
 	rows := make([]templ.Component, 0, rowNum)
 	// row := make([]templ.Component, colNum)
 
-	prevBtn := components.PixelartHold()
-	delAscii := components.Pixelart()
 	var lastImage templ.Component
 	var images []templ.Component
 	var drawImages int = 0
 
-	var imgDeleteBind = ImageDelete()
-	for _, imgId := range gs.imageIds {
-		if imgId == "deleted" {
+	for _, idImg := range gs.imageIds {
+		fmt.Printf("|id image - %s\n", idImg)
+		if idImg == "deleted" {
 			continue
 		}
 
 		drawImages += 1
-		previewLink := fmt.Sprintf(PreviewOpen().FmtStr, imgId)
-		modalDesc := InvokeModal(previewLink)
-		forPreviewBtn := components.ModalButton(modalDesc, prevBtn)
-
-		aLink := components.ActionLink{
-			LinkToAction: fmt.Sprintf(imgDeleteBind.FmtStr, imgId),
-			IDName:       fmt.Sprintf("deleter_%s", imgId),
-			Target:       DeleteSinkHid().TargName,
-		}
-		delBtn := components.ButtonAction(aLink, delAscii)
-		lastImage = components.JustImg(imgUrl(imgId), imgDelUrl(imgId), forPreviewBtn, delBtn)
+		lastImage = ImgComp(idImg)
 		images = append(images, lastImage)
 
 	}
-	// delta := imgNum - showedImgNum
-	// if delta > 0 {
-	// 	rows = append(rows, components.FlexRow(row[0:delta]))
-	// }
+
 	var imgsLeft int = len(images)
 	fmt.Printf("imgs %d\n", imgsLeft)
 	fmt.Printf("rows %d\n", len(rows))
@@ -298,6 +310,7 @@ func (gs *GenState) GenPage(w http.ResponseWriter, r *http.Request) {
 		imgsLeft -= 4
 		off += 4
 	}
+	// it will become image matrix
 	slices.Reverse(rows)
 	imgs := components.FeedColumn(rows, "imgs")
 	mainContent := components.FeedColumn([]templ.Component{

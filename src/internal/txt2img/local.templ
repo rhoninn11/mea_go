@@ -1,0 +1,10 @@
+package txt2img 
+
+templ GenButton(target string) {
+    <div>
+        <button hx-get="/prompt/commit"
+            hx-swap="outerHTML"
+            hx-target={target}
+        >Gen image</button>
+    </div>
+}

@@ -75,7 +75,7 @@ func join(dir string, file string) string {
 }
 
 func main() {
-	protoPrefix := "./api/proto"
+	protoPrefix := "src/api/proto"
 	protos := allFiles(protoPrefix, ".proto")
 
 	for _, fname := range protos {

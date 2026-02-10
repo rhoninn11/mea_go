@@ -63,19 +63,34 @@ func imageGen(gen *GenState, comfy *ComfyData) (string, error) {
 	if err := png.Encode(&buffer, gImg); err != nil {
 		return "", fmt.Errorf("!!! failed to encode %s, %v", imgName, err)
 	}
+
+	//updating state
 	gen.addImage(imgName, buffer.Bytes())
 
-	fileName := JoinPath(DirImage(), PngFilename(imgName))
+	//saving image
+	pngFile := JoinPath(DirImage(), PngFilename(imgName))
+	if err := data2File(pngFile, buffer); err != nil {
+		return "", fmt.Errorf("!!! failed to encode %s, %v", imgName, err)
+	}
+
+	//TODO: saving prompts
+	yamlFile := JoinPath(DirImage(), YamlFilename(imgName))
+	_ = yamlFile
+
+	return imgName, nil
+}
+
+func data2File(fileName string, data bytes.Buffer) error {
 	file, err := os.Create(fileName)
 	if err != nil {
-		return "", fmt.Errorf("!!! file failed to open %s, %v", fileName, err)
+		return fmt.Errorf("!!! file failed to open %s, %v", fileName, err)
 	}
 	defer file.Close()
 
-	_, err = file.Write(buffer.Bytes())
+	_, err = file.Write(data.Bytes())
 	if err != nil {
-		return "", fmt.Errorf("!!! file write fail %s, %v", fileName, err)
+		return fmt.Errorf("!!! file write fail %s, %v", fileName, err)
 	}
-	return imgName, nil
 
+	return nil
 }
