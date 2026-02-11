@@ -30,3 +30,9 @@ func (ep *errorPanicker) HasError(err error) bool {
 	}
 	return occured
 }
+
+func CloseOnError(err error) {
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
+}

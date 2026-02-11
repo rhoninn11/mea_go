@@ -26,7 +26,7 @@ const (
 
 type SlotMap map[string]mea_gen_d.Slot
 
-var SlotMapping = SlotMap{
+var SlotMapping = map[string]mea_gen_d.Slot{
 	SLOT_A: mea_gen_d.Slot_a,
 	SLOT_B: mea_gen_d.Slot_b,
 	SLOT_C: mea_gen_d.Slot_c,
@@ -208,7 +208,8 @@ func (gs *GenState) PromptEditor(hid HtmxId) templ.Component {
 	// calls := "/prompt"
 
 	padFromSlot := func(id string, slot mea_gen_d.Slot) templ.Component {
-		return components.PromptPad(id, gs.prompts[slot])
+		currPrompt := gs.prompts[slot]
+		return components.PromptPad(id, currPrompt)
 	}
 
 	submmitBtn := txt2img.GenButton(hid.TargName)
@@ -265,6 +266,8 @@ func ImgComp(idImg string) templ.Component {
 	delBtn := components.ButtonAction(aLink, asciiDel)
 	return components.JustImg(imgUrl(idImg), imgDelUrl(idImg), forPreviewBtn, delBtn)
 }
+
+type TCmpt = templ.Component
 
 // show all results and editor
 func (gs *GenState) GenPage(w http.ResponseWriter, r *http.Request) {

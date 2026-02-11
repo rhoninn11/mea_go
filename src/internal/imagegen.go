@@ -6,7 +6,6 @@ import (
 	"image/png"
 	mea_gen_d "mea_go/src/api/mea.gen.d"
 	"os"
-	"slices"
 	"time"
 )
 
@@ -14,27 +13,55 @@ func uniqueName() string {
 	timestump := time.Now().UTC().UnixMilli()
 	return fmt.Sprintf("%d", timestump)
 }
+
+type SlotPrompt struct {
+	SlotName string `yaml:"slot"`
+	Prompt   string `yaml:"name"`
+}
+type SlotPromptS struct {
+	Promps   []SlotPrompt `yaml:"prompts"`
+	Sequence []string     `yaml:"seq"`
+}
+
+func FormPrompt(usedSlots []string, usedPrompts []string) SlotPromptS {
+	var few = make([]SlotPrompt, 0, len(usedSlots))
+	for i := range usedSlots {
+		single := SlotPrompt{
+			SlotName: usedSlots[i],
+			Prompt:   usedPrompts[i],
+		}
+		few = append(few, single)
+	}
+
+	return SlotPromptS{
+		Promps:   few,
+		Sequence: usedSlots,
+	}
+}
 func imageGen(gen *GenState, comfy *ComfyData) (string, error) {
 	var _plug mea_gen_d.Empty
+	var imgBasename = uniqueName()
 
 	opt := comfy.Options
 	serv := comfy.Service
 
+	usedSlots := make([]string, 0, 4)
 	usedPrompts := make([]string, 0, 4)
 	for name, slot := range SlotMapping {
-		slotedPrompt := mea_gen_d.SlotedPrompt{
+		sloted := mea_gen_d.SlotedPrompt{
 			Slot:   slot,
 			Prompt: gen.prompts[slot],
 		}
-		if slotedPrompt.Prompt == "" {
+		if sloted.Prompt == "" {
 			continue
 		}
-		usedPrompts = append(usedPrompts, name)
-		if _, err := serv.SetPrompt(comfy.Ctx, &slotedPrompt); err != nil {
+		usedSlots = append(usedSlots, name)
+		usedPrompts = append(usedPrompts, sloted.Prompt)
+		if _, err := serv.SetPrompt(comfy.Ctx, &sloted); err != nil {
 			return "", fmt.Errorf("failed to set prompt (%s) | %v", name, err)
 		}
 	}
-	slices.Sort(usedPrompts)
+
 	fmt.Println("+++ used prompts: ", usedPrompts)
 
 	// firsSlot := gen.promptSlots[0]
@@ -57,27 +84,29 @@ func imageGen(gen *GenState, comfy *ComfyData) (string, error) {
 		return "", fmt.Errorf("!!! txt2img failed, %v", err)
 	}
 
-	imgName := uniqueName()
 	gImg := ImgProtoToGo(pImg)
 	var buffer = bytes.Buffer{}
 	if err := png.Encode(&buffer, gImg); err != nil {
-		return "", fmt.Errorf("!!! failed to encode %s, %v", imgName, err)
+		return "", fmt.Errorf("!!! failed to encode %s, %v", imgBasename, err)
 	}
 
 	//updating state
-	gen.addImage(imgName, buffer.Bytes())
+	gen.addImage(imgBasename, buffer.Bytes())
 
 	//saving image
-	pngFile := JoinPath(DirImage(), PngFilename(imgName))
+	pngFile := JoinPath(DirImage(), PngFilename(imgBasename))
 	if err := data2File(pngFile, buffer); err != nil {
-		return "", fmt.Errorf("!!! failed to encode %s, %v", imgName, err)
+		return "", fmt.Errorf("!!! failed to encode %s, %v", imgBasename, err)
 	}
 
-	//TODO: saving prompts
-	yamlFile := JoinPath(DirImage(), YamlFilename(imgName))
-	_ = yamlFile
+	yamlFile := JoinPath(DirImage(), YamlFilename(imgBasename))
+	yamlObj := FormPrompt(usedSlots, usedPrompts)
+	err = SaveAsYAML(yamlFile, yamlObj)
+	if err != nil {
+		return "", fmt.Errorf("!!! failed to save %s, %w", yamlFile, err)
+	}
 
-	return imgName, nil
+	return imgBasename, nil
 }
 
 func data2File(fileName string, data bytes.Buffer) error {
