@@ -209,7 +209,7 @@ func (gs *GenState) PromptEditor(hid HtmxId) templ.Component {
 
 	padFromSlot := func(id string, slot mea_gen_d.Slot) templ.Component {
 		currPrompt := gs.prompts[slot]
-		return components.PromptPad(id, currPrompt)
+		return txt2img.PromptPad(id, currPrompt, "/prompt")
 	}
 
 	submmitBtn := txt2img.GenButton(hid.TargName)
@@ -233,11 +233,19 @@ func (gs *GenState) PromptInput(w http.ResponseWriter, r *http.Request) {
 		}
 
 		for slotName, data := range r.Form {
+
 			prompt := strings.Join(data, "")
+			fmt.Printf("%s | %s\n", slotName, prompt)
 			slot := SlotMapping[slotName]
 
 			if _, ok := gs.prompts[slot]; ok {
-				gs.prompts[slot] = prompt
+				old := gs.prompts[slot]
+				new := prompt
+				gs.prompts[slot] = new
+				_ = old
+
+				// TODO: start request to ollama
+				// return some procede next?
 			} else {
 				err := fmt.Errorf("bad prompt")
 				InformError(err, &w)

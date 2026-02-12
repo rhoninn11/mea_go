@@ -8,3 +8,15 @@ templ GenButton(target string) {
         >Gen image</button>
     </div>
 }
+
+templ PromptPad(id string, value string, link string){
+    <div class="flex flex-col bg-slate-600 p-4 m-1">
+        <textarea class="bg-slate-400" name={id} 
+            hx-post={link}
+            hx-trigger="input changed delay:1s">
+            {value}</textarea>
+        <div id={id+"_pl"}>
+            <span>translateion spot {id+"_pl added"}</span>
+        </div>
+    </div>
+}

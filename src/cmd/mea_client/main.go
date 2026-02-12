@@ -6,6 +6,7 @@ import (
 	"log"
 	"mea_go/src/components"
 	"mea_go/src/internal"
+	"mea_go/src/internal/translte"
 	"net/http"
 )
 
@@ -68,5 +69,7 @@ func main() {
 
 	var url = fmt.Sprintf("http://%s/%s", base, "history")
 	fmt.Printf("+++ niby wystartowałem api, api route: \n%s\n", url)
+
+	translte.StartApi()
 	_ = http.ListenAndServe(base, nil)
 }
