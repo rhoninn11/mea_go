@@ -1,4 +1,4 @@
-package internal
+package txt2img
 
 import (
 	"context"
@@ -6,8 +6,7 @@ import (
 	"log"
 	"math"
 	mea_gen_d "mea_go/src/api/mea.gen.d"
-	"mea_go/src/components"
-	"mea_go/src/internal/txt2img"
+	"mea_go/src/internal"
 	"net/http"
 	"os"
 	"slices"
@@ -32,11 +31,7 @@ var SlotMapping = map[string]mea_gen_d.Slot{
 	SLOT_C: mea_gen_d.Slot_c,
 }
 
-type HttpFuncPack struct {
-	Fn   HttpFunc
-	Show bool
-}
-type HttpFuncMap = map[templ.SafeURL]HttpFuncPack
+type HttpFuncMap = map[templ.SafeURL]internal.HttpFuncPack
 
 type PromptMap = map[mea_gen_d.Slot]string
 
@@ -57,6 +52,7 @@ type GenState struct {
 	comfyData   *ComfyData
 	imageData   ImgMap
 	imageIds    []string
+	system      *any
 }
 
 type FlowData struct {
@@ -101,8 +97,8 @@ func ImageDelete() LinkBind {
 	}
 }
 
-type HtmxId = components.HtmxId
-type ModalDesc = components.ModalDesc
+type HtmxId = internal.HtmxId
+type ModalDesc = internal.ModalDesc
 
 func NamedId(name string) HtmxId {
 	return HtmxId{
@@ -121,6 +117,9 @@ func EditorHid() HtmxId {
 
 func DeleteSinkHid() HtmxId {
 	return NamedId("delete_sink")
+}
+func TranslateSinkHid() HtmxId {
+	return NamedId("translate_sink")
 }
 
 func InvokeModal(link string) ModalDesc {
@@ -164,19 +163,19 @@ func (gs *GenState) init() {
 
 	var loadeImgsNum int = 0
 	func(gs *GenState) {
-		imgDir := DirImage()
+		imgDir := internal.DirImage()
 		entries, err := os.ReadDir(imgDir)
 		if err != nil {
 			log.Fatalln("scaning imgs", err.Error())
 		}
-		panicker := Panicker(4)
+		panicker := internal.Panicker(4)
 		for _, entry := range entries {
 			name := entry.Name()
 			if !strings.HasSuffix(name, ".png") {
 				continue
 			}
 			basename := strings.TrimSuffix(name, ".png")
-			yamlFile := Filename(basename, "yaml")
+			yamlFile := internal.Filename(basename, "yaml")
 			_ = yamlFile
 
 			imgPath := strings.Join([]string{imgDir, name}, "/")
@@ -207,12 +206,14 @@ func (gs *GenState) init() {
 func (gs *GenState) PromptEditor(hid HtmxId) templ.Component {
 	// calls := "/prompt"
 
+	// dziewiąta tablica gilgameszha
+	var sink = TranslateSinkHid()
 	padFromSlot := func(id string, slot mea_gen_d.Slot) templ.Component {
 		currPrompt := gs.prompts[slot]
-		return txt2img.PromptPad(id, currPrompt, "/prompt")
+		return PromptPad(id, currPrompt, "/prompt", sink.TargName)
 	}
 
-	submmitBtn := txt2img.GenButton(hid.TargName)
+	submmitBtn := GenButton(hid.TargName)
 
 	editor := []templ.Component{
 		padFromSlot(SLOT_A, mea_gen_d.Slot_a),
@@ -220,7 +221,7 @@ func (gs *GenState) PromptEditor(hid HtmxId) templ.Component {
 		padFromSlot(SLOT_C, mea_gen_d.Slot_c),
 		submmitBtn,
 	}
-	return components.FeedColumn(editor, hid.JustName)
+	return internal.FeedColumn(editor, hid.JustName)
 }
 
 func (gs *GenState) PromptInput(w http.ResponseWriter, r *http.Request) {
@@ -244,8 +245,15 @@ func (gs *GenState) PromptInput(w http.ResponseWriter, r *http.Request) {
 				gs.prompts[slot] = new
 				_ = old
 
+				err := internal.Block(len(new)).Render(r.Context(), w)
+				if err != nil {
+					log.Println(err.Error())
+				}
+				return
 				// TODO: start request to ollama
 				// return some procede next?
+				// https://claude.ai/chat/06d0f9d0-9a38-4923-bf99-d6b4c7988c99
+				// tu
 			} else {
 				err := fmt.Errorf("bad prompt")
 				InformError(err, &w)
@@ -257,29 +265,29 @@ func (gs *GenState) PromptInput(w http.ResponseWriter, r *http.Request) {
 }
 
 func ImgComp(idImg string) templ.Component {
-	asciiOpen := components.PixelartHold()
-	asciiDel := components.Pixelart()
+	asciiOpen := internal.PixelartHold()
+	asciiDel := internal.Pixelart()
 	var open LinkBind = PreviewOpen()
 	var del LinkBind = ImageDelete()
 
 	previewLink := open.FmtLink(idImg)
 	modalDesc := InvokeModal(previewLink)
-	forPreviewBtn := components.ModalButton(modalDesc, asciiOpen)
+	forPreviewBtn := internal.ModalButton(modalDesc, asciiOpen)
 
-	aLink := components.ActionLink{
+	aLink := internal.ActionLink{
 		LinkToAction: del.FmtLink(idImg),
 		IDName:       fmt.Sprintf("deleter_%s", idImg),
 		Target:       DeleteSinkHid().TargName,
 	}
-	delBtn := components.ButtonAction(aLink, asciiDel)
-	return components.JustImg(imgUrl(idImg), imgDelUrl(idImg), forPreviewBtn, delBtn)
+	delBtn := internal.ButtonAction(aLink, asciiDel)
+	return internal.JustImg(imgUrl(idImg), imgDelUrl(idImg), forPreviewBtn, delBtn)
 }
 
 type TCmpt = templ.Component
 
 // show all results and editor
 func (gs *GenState) GenPage(w http.ResponseWriter, r *http.Request) {
-	SetContentType(w, ContentType_Html)
+	internal.SetContentType(w, internal.ContentType_Html)
 
 	const colNum = 4
 	var imgNum = len(gs.imageIds)
@@ -314,24 +322,31 @@ func (gs *GenState) GenPage(w http.ResponseWriter, r *http.Request) {
 		if imgsLeft <= 4 {
 			start := off
 			end := off + imgsLeft
-			rows = append(rows, components.FlexRow(images[start:end]))
+			rows = append(rows, internal.FlexRow(images[start:end]))
 			break
 		}
-		rows = append(rows, components.FlexRow(images[off:off+4]))
+		rows = append(rows, internal.FlexRow(images[off:off+4]))
 		imgsLeft -= 4
 		off += 4
 	}
 	// it will become image matrix
 	slices.Reverse(rows)
-	imgs := components.FeedColumn(rows, "imgs")
-	mainContent := components.FeedColumn([]templ.Component{
-		components.JustHid(DeleteSinkHid()),
+	imgs := internal.FeedColumn(rows, "imgs")
+	mainContent := internal.FeedColumn([]templ.Component{
+		internal.JustHid(DeleteSinkHid()),
 		gs.PromptEditor(EditorHid()),
 		imgs,
-		components.ModalLayer(ModalHid()),
+		internal.ModalLayer(ModalHid()),
 	}, "modal_feed")
 
-	wholePage := PageWithSidebar(mainContent)
+	var opts = internal.PageOpts{
+		PageContent: mainContent,
+		Sinks: []HtmxId{
+			DeleteSinkHid(),
+			TranslateSinkHid(),
+		},
+	}
+	wholePage := internal.PageWithSidebar(opts)
 	wholePage.Render(context.Background(), w)
 }
 
@@ -346,20 +361,20 @@ func (gs *GenState) PromptCommit(w http.ResponseWriter, r *http.Request) {
 
 	// tu bym mógł zapisać prompty do bazy danych
 	// może jako proto jako blob binarny w sql lite?
-	id, err := imageGen(gs, gs.comfyData)
+	id, err := ImageGen(gs, gs.comfyData)
 	if err != nil {
 		log.Default().Println("ERR: ", err.Error())
 		http.Error(w, "", 500)
 		return
 	}
 
-	SetContentType(w, ContentType_Html)
-	something := components.Block(888)
+	internal.SetContentType(w, internal.ContentType_Html)
+	something := internal.Block(888)
 
 	promptId := NamedId("prompt_editor")
-	feed := components.FeedColumn(
+	feed := internal.FeedColumn(
 		[]templ.Component{
-			components.JustImg(imgUrl(id), imgDelUrl(id), something, something),
+			internal.JustImg(imgUrl(id), imgDelUrl(id), something, something),
 			gs.PromptEditor(promptId),
 		}, "xd")
 	feed.Render(context.Background(), w)
@@ -378,7 +393,7 @@ func (ps *GenState) FetchImage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad request", 500)
 	}
 
-	SetContentType(w, ContentType_Html)
+	internal.SetContentType(w, internal.ContentType_Html)
 	_, err := w.Write(imgData.bytes)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
@@ -401,7 +416,7 @@ func (ps *GenState) DeleteImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	imgFile := JoinPath(DirImage(), Filename(id, "png"))
+	imgFile := internal.JoinPath(internal.DirImage(), internal.Filename(id, "png"))
 	if _, err := os.Stat(imgFile); err != nil {
 		InformError(fmt.Errorf("file for %s dont exist | %v", id, err), &w)
 		return
@@ -420,23 +435,26 @@ func (ps *GenState) DeleteImage(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("+++ succesfully deleted: ", imgFile)
 	w.WriteHeader(200)
 }
+func htmlBrb(w http.ResponseWriter) {
+	internal.SetContentType(w, internal.ContentType_Html)
+}
 
 func (ps *GenState) PreviewClose(w http.ResponseWriter, r *http.Request) {
-	SetContentType(w, ContentType_Html)
+	htmlBrb(w)
 	w.Write([]byte(`<div id="modal"></div>`))
 }
 
 func (ps *GenState) PreviewOpen(w http.ResponseWriter, r *http.Request) {
 	var id string
 
-	SetContentType(w, ContentType_Html)
+	htmlBrb(w)
 	if id = r.PathValue("id"); id == "" {
 		InformError(fmt.Errorf("failed to extract id"), &w)
 	}
 
 	fmt.Printf("+++ opening preview for %s\n", id)
-	content := components.BigImg(imgUrl(id))
-	modal := components.Modal("preview", content, PreviewClose().EntryPoint)
+	content := internal.BigImg(imgUrl(id))
+	modal := internal.Modal("preview", content, PreviewClose().EntryPoint)
 	modal.Render(r.Context(), w)
 }
 
@@ -455,12 +473,12 @@ func imgDelUrl(id string) string {
 
 func (gs *GenState) LoadFns() HttpFuncMap {
 	return HttpFuncMap{
-		"/gen_page":                              {gs.GenPage, true},
-		"/prompt":                                {gs.PromptInput, false},
-		"/prompt/commit":                         {gs.PromptCommit, false},
-		"/prompt/img":                            {gs.FetchImage, false},
-		templ.SafeURL(ImageDelete().EntryPoint):  {gs.DeleteImage, false},
-		templ.SafeURL(PreviewOpen().EntryPoint):  {gs.PreviewOpen, false},
-		templ.SafeURL(PreviewClose().EntryPoint): {gs.PreviewClose, false},
+		"/gen_page":                              {Fn: gs.GenPage, Show: true},
+		"/prompt":                                {Fn: gs.PromptInput, Show: false},
+		"/prompt/commit":                         {Fn: gs.PromptCommit, Show: false},
+		"/prompt/img":                            {Fn: gs.FetchImage, Show: false},
+		templ.SafeURL(ImageDelete().EntryPoint):  {Fn: gs.DeleteImage, Show: false},
+		templ.SafeURL(PreviewOpen().EntryPoint):  {Fn: gs.PreviewOpen, Show: false},
+		templ.SafeURL(PreviewClose().EntryPoint): {Fn: gs.PreviewClose, Show: false},
 	}
 }

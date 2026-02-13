@@ -16,7 +16,7 @@ client:
 	go run src/cmd/mea_client/main.go	
 
 air:
-	@air
+	@go tool air
 
 
 build_site: templ css

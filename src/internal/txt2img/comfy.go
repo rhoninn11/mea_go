@@ -1,4 +1,4 @@
-package internal
+package txt2img
 
 import (
 	"context"

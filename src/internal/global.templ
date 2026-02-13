@@ -1,5 +1,4 @@
-package components
-
+package internal
 
 // export PATH="$PATH:$(go env GOPATH)/bin"
 templ Global(name string, body templ.Component) {
@@ -49,12 +48,17 @@ templ TwoTabs(sideData templ.Component, mainContent templ.Component) {
 
 }
 
-templ SideLinks(links []templ.SafeURL){
+templ SideLinks(links []templ.SafeURL, sinks []HtmxId){
 	<div class="flex flex-col p-2">
 		for _, asText := range links {
 			<a class="bg-slate-400"
 			href={asText}>{asText}</a>
 		}
+		<div>
+		for _, sink := range sinks {
+			@JustHid(sink)
+		}
+		</div>	
 	</div>
 }
 templ Entry(text string) {

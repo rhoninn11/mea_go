@@ -1,10 +1,11 @@
-package internal
+package txt2img
 
 import (
 	"bytes"
 	"fmt"
 	"image/png"
 	mea_gen_d "mea_go/src/api/mea.gen.d"
+	utils "mea_go/src/internal"
 	"os"
 	"time"
 )
@@ -38,7 +39,7 @@ func FormPrompt(usedSlots []string, usedPrompts []string) SlotPromptS {
 		Sequence: usedSlots,
 	}
 }
-func imageGen(gen *GenState, comfy *ComfyData) (string, error) {
+func ImageGen(gen *GenState, comfy *ComfyData) (string, error) {
 	var _plug mea_gen_d.Empty
 	var imgBasename = uniqueName()
 
@@ -84,7 +85,7 @@ func imageGen(gen *GenState, comfy *ComfyData) (string, error) {
 		return "", fmt.Errorf("!!! txt2img failed, %v", err)
 	}
 
-	gImg := ImgProtoToGo(pImg)
+	gImg := utils.ImgProtoToGo(pImg)
 	var buffer = bytes.Buffer{}
 	if err := png.Encode(&buffer, gImg); err != nil {
 		return "", fmt.Errorf("!!! failed to encode %s, %v", imgBasename, err)
@@ -94,14 +95,15 @@ func imageGen(gen *GenState, comfy *ComfyData) (string, error) {
 	gen.addImage(imgBasename, buffer.Bytes())
 
 	//saving image
-	pngFile := JoinPath(DirImage(), PngFilename(imgBasename))
+	dirImg := utils.DirImage()
+	pngFile := utils.JoinPath(dirImg, utils.PngFilename(imgBasename))
 	if err := data2File(pngFile, buffer); err != nil {
 		return "", fmt.Errorf("!!! failed to encode %s, %v", imgBasename, err)
 	}
 
-	yamlFile := JoinPath(DirImage(), YamlFilename(imgBasename))
+	yamlFile := utils.JoinPath(dirImg, utils.YamlFilename(imgBasename))
 	yamlObj := FormPrompt(usedSlots, usedPrompts)
-	err = SaveAsYAML(yamlFile, yamlObj)
+	err = utils.SaveAsYAML(yamlFile, yamlObj)
 	if err != nil {
 		return "", fmt.Errorf("!!! failed to save %s, %w", yamlFile, err)
 	}

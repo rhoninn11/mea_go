@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"mea_go/src/components"
 	"mea_go/src/internal"
 	"mea_go/src/internal/translte"
+	"mea_go/src/internal/txt2img"
 	"net/http"
 )
 
@@ -28,7 +28,7 @@ func RecivePrompt(w http.ResponseWriter, r *http.Request) {
 	}
 
 	internal.SetContentType(w, internal.ContentType_Html)
-	render := components.Block(0)
+	render := internal.Block(0)
 	render.Render(context.Background(), w)
 }
 
@@ -59,7 +59,7 @@ func main() {
 	static = internal.NoCacheMiddleware(static)
 	http.Handle("/static/", static)
 
-	promptModule := internal.PromptModuleAccess()
+	promptModule := txt2img.PromptModuleAccess()
 
 	mapping := promptModule.LoadFns()
 	for k, v := range mapping {
@@ -67,7 +67,7 @@ func main() {
 		registerFn(k, v)
 	}
 
-	var url = fmt.Sprintf("http://%s/%s", base, "history")
+	var url = fmt.Sprintf("http://%s/%s", base, "gen_page")
 	fmt.Printf("+++ niby wystartowałem api, api route: \n%s\n", url)
 
 	translte.StartApi()

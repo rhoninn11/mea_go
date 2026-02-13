@@ -1,4 +1,4 @@
-package components
+package internal
 
 type ModalOpener struct {
 	IDName        string
@@ -14,9 +14,4 @@ type ActionLink struct {
 	IDName       string
 	Target       string
 	LinkToAction string
-}
-
-type HtmxId struct {
-	JustName string
-	TargName string
 }

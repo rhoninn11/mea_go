@@ -2,7 +2,6 @@ package internal
 
 import (
 	"fmt"
-	"mea_go/src/components"
 	"net/http"
 
 	"github.com/a-h/templ"
@@ -11,6 +10,11 @@ import (
 type ResponseWriter = http.ResponseWriter
 type Request = http.Request
 type HttpFunc = func(ResponseWriter, *Request)
+
+type HttpFuncPack struct {
+	Fn   HttpFunc
+	Show bool
+}
 
 var endpotins = make([]templ.SafeURL, 0, 16)
 
@@ -29,10 +33,18 @@ func RegisterHandler(endpoint templ.SafeURL, fnPack HttpFuncPack) {
 	http.HandleFunc(string(endpoint), middle)
 }
 
-func PageWithSidebar(main templ.Component) templ.Component {
-	side := components.SideLinks(endpotins)
-	twoTabs := components.TwoTabs(side, main)
-	return components.Global("Tua editro", twoTabs)
+type PageOpts struct {
+	PageContent templ.Component
+	Sinks       []HtmxId
+}
+
+func PageWithSidebar(data PageOpts) templ.Component {
+
+	page := data.PageContent
+	sinks := data.Sinks
+	side := SideLinks(endpotins, sinks)
+	twoTabs := TwoTabs(side, page)
+	return Global("Tua editro", twoTabs)
 }
 
 func NoCacheMiddleware(base http.Handler) http.Handler {

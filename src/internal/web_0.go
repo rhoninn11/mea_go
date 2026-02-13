@@ -1,6 +1,8 @@
 package internal
 
-import "net/http"
+import (
+	"net/http"
+)
 
 type HeaderType string
 
@@ -19,6 +21,10 @@ const (
 )
 
 type CacheType string
+type HtmxId struct {
+	JustName string
+	TargName string
+}
 
 const (
 	CacheType_NoCache CacheType = "no-cache"
