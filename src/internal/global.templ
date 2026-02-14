@@ -96,3 +96,7 @@ templ ButtonAction(openLink ActionLink, inside templ.Component) {
 templ JustHid(hid HtmxId){
     <div id={hid.JustName}></div>
 }
+
+templ ProcedeNext(action TargetAction) {
+	<div hx-trigger="load once" hx-target={action.Target} hx-get={action.LinkToAction}></div>
+}

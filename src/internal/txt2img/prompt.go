@@ -97,6 +97,22 @@ func ImageDelete() LinkBind {
 	}
 }
 
+func PromptInputLB() LinkBind {
+	return LinkBind{
+		Prefix:     "/prompt/input",
+		EntryPoint: "/prompt/input/{slot}",
+		FmtStr:     "/prompt/input/%s",
+	}
+}
+
+func PromptTranslateLB() LinkBind {
+	return LinkBind{
+		Prefix:     "/prompt/translate",
+		EntryPoint: "/prompt/translate/{slot}",
+		FmtStr:     "/prompt/translate/%s",
+	}
+}
+
 type HtmxId = internal.HtmxId
 type ModalDesc = internal.ModalDesc
 
@@ -204,13 +220,17 @@ func (gs *GenState) init() {
 }
 
 func (gs *GenState) PromptEditor(hid HtmxId) templ.Component {
-	// calls := "/prompt"
+	var promptInput = PromptInputLB()
 
 	// dziewiąta tablica gilgameszha
 	var sink = TranslateSinkHid()
 	padFromSlot := func(id string, slot mea_gen_d.Slot) templ.Component {
 		currPrompt := gs.prompts[slot]
-		return PromptPad(id, currPrompt, "/prompt", sink.TargName)
+		ta := internal.TargetAction{
+			Target:       sink.TargName,
+			LinkToAction: promptInput.FmtLink(id),
+		}
+		return PromptPadV2(id, currPrompt, ta)
 	}
 
 	submmitBtn := GenButton(hid.TargName)
@@ -223,8 +243,21 @@ func (gs *GenState) PromptEditor(hid HtmxId) templ.Component {
 	}
 	return internal.FeedColumn(editor, hid.JustName)
 }
+func (gs *GenState) PromptTranslate(w http.ResponseWriter, r *http.Request) {
+	slot := r.PathValue("slot")
+
+	fmt.Printf("+++ we will be translating for slot %s\n", slot)
+
+	slotKey, ok := SlotMapping[slot]
+	if !ok {
+		fmt.Printf("+++ slot neveer existed %s\n", slot)
+	}
+	prompt := gs.prompts[slotKey]
+	fmt.Printf("+++ current prompt %s\n", prompt)
+}
 
 func (gs *GenState) PromptInput(w http.ResponseWriter, r *http.Request) {
+	var translate = PromptTranslateLB()
 
 	if r.Method == http.MethodPost {
 		if r.ParseForm() != nil {
@@ -245,10 +278,23 @@ func (gs *GenState) PromptInput(w http.ResponseWriter, r *http.Request) {
 				gs.prompts[slot] = new
 				_ = old
 
-				err := internal.Block(len(new)).Render(r.Context(), w)
+				translationHid := NamedId(fmt.Sprintf("%s_pl", slotName))
+				transAction := internal.TargetAction{
+					Target:       translationHid.TargName,
+					LinkToAction: translate.FmtLink(slotName),
+				}
+				out := internal.ProcedeNext(transAction)
+				// out = internal.Block(len(new))
+
+				err := out.Render(r.Context(), w)
 				if err != nil {
 					log.Println(err.Error())
 				}
+				// hmm := internal.ActionLink{
+				// 	IDName: "",
+				// 	Target: ,
+				// }
+				// internal.ProcedeNext()
 				return
 				// TODO: start request to ollama
 				// return some procede next?
@@ -473,8 +519,9 @@ func imgDelUrl(id string) string {
 
 func (gs *GenState) LoadFns() HttpFuncMap {
 	return HttpFuncMap{
-		"/gen_page":                              {Fn: gs.GenPage, Show: true},
-		"/prompt":                                {Fn: gs.PromptInput, Show: false},
+		"/gen_page": {Fn: gs.GenPage, Show: true},
+		templ.SafeURL(PromptInputLB().EntryPoint):     {Fn: gs.PromptInput, Show: false},
+		templ.SafeURL(PromptTranslateLB().EntryPoint): {Fn: gs.PromptTranslate, Show: false},
 		"/prompt/commit":                         {Fn: gs.PromptCommit, Show: false},
 		"/prompt/img":                            {Fn: gs.FetchImage, Show: false},
 		templ.SafeURL(ImageDelete().EntryPoint):  {Fn: gs.DeleteImage, Show: false},

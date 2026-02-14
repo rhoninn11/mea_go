@@ -15,3 +15,8 @@ type ActionLink struct {
 	Target       string
 	LinkToAction string
 }
+
+type TargetAction struct {
+	Target       string
+	LinkToAction string
+}

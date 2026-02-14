@@ -1,5 +1,7 @@
 package txt2img 
 
+import "mea_go/src/internal"
+
 templ GenButton(target string) {
     <div>
         <button hx-get="/prompt/commit"
@@ -15,6 +17,18 @@ templ PromptPad(id string, value string, link string, target string){
             hx-post={link}
             hx-trigger="input changed delay:1s"
             hx-target={target}>
+            {value}</textarea>
+        <div id={id+"_pl"}>
+            <span>translateion spot {id+"_pl added"}</span>
+        </div>
+    </div>
+}
+templ PromptPadV2(id string, value string, link internal.TargetAction){
+    <div class="flex flex-col bg-slate-600 p-4 m-1">
+        <textarea class="bg-slate-400" name={id} 
+            hx-post={link.LinkToAction}
+            hx-trigger="input changed delay:1s"
+            hx-target={link.Target}>
             {value}</textarea>
         <div id={id+"_pl"}>
             <span>translateion spot {id+"_pl added"}</span>
