@@ -50,6 +50,12 @@ func main() {
 	var mode = DEBUG
 	_ = mode
 
+	client, err := translte.StartApi()
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	_ = client
+
 	const host = "0.0.0.0"
 	const port = 8080
 	var base = fmt.Sprintf("%s:%d", host, port) // eg localhost:8080
@@ -70,6 +76,5 @@ func main() {
 	var url = fmt.Sprintf("http://%s/%s", base, "gen_page")
 	fmt.Printf("+++ niby wystartowałem api, api route: \n%s\n", url)
 
-	translte.StartApi()
 	_ = http.ListenAndServe(base, nil)
 }

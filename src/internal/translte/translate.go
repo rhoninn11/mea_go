@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"mea_go/src/internal"
+	"net/http"
 	"text/template"
 
 	ollama "github.com/ollama/ollama/api"
@@ -57,17 +58,42 @@ func prevMain() {
 	fmt.Println(prompt)
 }
 
-func StartApi() {
+func StartApi() (*ollama.Client, error) {
 	client, err := ollama.ClientFromEnvironment()
 	if err != nil {
-		fmt.Printf("failed to connect to ollam\n")
-		return
+		return nil, fmt.Errorf("failed to connect to ollam")
 	}
 
 	ver, err := client.Version(context.Background())
 	if err != nil {
-		fmt.Printf("failed to get version\n")
-		return
+		return nil, fmt.Errorf("failed to get version\n")
 	}
 	fmt.Printf("Connected to ollama (%s)\n", ver)
+	return client, nil
+}
+
+func SetLocal(external *ollama.Client) {
+	local = external
+}
+
+var local *ollama.Client = nil
+
+type TranslateState struct {
+	name string
+}
+
+func (ts *TranslateState) StreamedTranslateion(w http.ResponseWriter, r *http.Request) {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming not supported", http.StatusInternalServerError)
+		return
+	}
+
+	internal.SetContentType(w, internal.ContentType_EventStream)
+	internal.SetCacheControl(w, internal.CacheType_NoCache)
+	w.Header().Set("Connection", "keep-alive")
+
+	_ = flusher
+	// TODO: start request to ollama
+	// https://claude.ai/chat/06d0f9d0-9a38-4923-bf99-d6b4c7988c99
 }

@@ -148,6 +148,7 @@ func InvokeModal(link string) ModalDesc {
 var memory GenState
 
 func init() {
+	fmt.Println("+++ inital call")
 	memory.init()
 }
 
@@ -290,16 +291,8 @@ func (gs *GenState) PromptInput(w http.ResponseWriter, r *http.Request) {
 				if err != nil {
 					log.Println(err.Error())
 				}
-				// hmm := internal.ActionLink{
-				// 	IDName: "",
-				// 	Target: ,
-				// }
-				// internal.ProcedeNext()
+
 				return
-				// TODO: start request to ollama
-				// return some procede next?
-				// https://claude.ai/chat/06d0f9d0-9a38-4923-bf99-d6b4c7988c99
-				// tu
 			} else {
 				err := fmt.Errorf("bad prompt")
 				InformError(err, &w)
