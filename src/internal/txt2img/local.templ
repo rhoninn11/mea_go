@@ -35,3 +35,15 @@ templ PromptPadV2(id string, value string, link internal.TargetAction){
         </div>
     </div>
 }
+
+templ PresenceBloc() {
+    <div class="bg-amber-700 size-16"></div>
+}
+
+templ Token(tok string) {
+    <span>{tok}</span>
+}
+
+templ SseReciver(link string, event string) {
+    <div hx-ext="sse" sse-connect={link} sse-swap={event}></div>
+}
