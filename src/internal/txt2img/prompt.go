@@ -253,10 +253,11 @@ func (gs *GenState) PromptEditor(hid HtmxId) templ.Component {
 	}
 	return internal.FeedColumn(editor, hid.JustName)
 }
-func (gs *GenState) PromptTranslateReciver(w http.ResponseWriter, r *http.Request) {
+func (gs *GenState) PromptTranslateInit(w http.ResponseWriter, r *http.Request) {
 	lb := PromptTranslateLB()
 	slot := r.PathValue("slot")
 
+	fmt.Printf("+++ wait what\n")
 	_, ok := SlotMapping[slot]
 	if !ok {
 		InformError(fmt.Errorf("bad slot 1"), w)
@@ -338,7 +339,7 @@ func (gs *GenState) PromptTranslate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (gs *GenState) PromptInput(w http.ResponseWriter, r *http.Request) {
-	var translate = PromptTranslateLB()
+	var translate = PromptTranslateInitLB()
 
 	if r.Method == http.MethodPost {
 		if r.ParseForm() != nil {
@@ -502,7 +503,7 @@ func (gs *GenState) GenPage(w http.ResponseWriter, r *http.Request) {
 	var drawImages int = 0
 
 	for _, idImg := range gs.imageIds {
-		fmt.Printf("|id image - %s\n", idImg)
+		// fmt.Printf("|id image - %s\n", idImg)
 		if idImg == "deleted" {
 			continue
 		}
@@ -600,7 +601,7 @@ func (gs *GenState) LoadFns() HttpFuncMap {
 	return HttpFuncMap{
 		"/gen_page": {Fn: gs.GenPage, Show: true},
 		templ.SafeURL(PromptInputLB().EntryPoint):         {Fn: gs.PromptInput, Show: false},
-		templ.SafeURL(PromptTranslateInitLB().EntryPoint): {Fn: gs.PromptTranslateReciver, Show: false},
+		templ.SafeURL(PromptTranslateInitLB().EntryPoint): {Fn: gs.PromptTranslateInit, Show: false},
 		templ.SafeURL(PromptTranslateLB().EntryPoint):     {Fn: gs.PromptTranslate, Show: false},
 		"/prompt/commit":                         {Fn: gs.PromptCommit, Show: false},
 		"/prompt/img":                            {Fn: gs.FetchImage, Show: false},
