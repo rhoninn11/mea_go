@@ -292,27 +292,20 @@ func (gs *GenState) PromptTranslate(w http.ResponseWriter, r *http.Request) {
 
 	// lets build prototype
 	words := strings.Split(prompt, " ")
-	torkens := make([]string, len(words)*2-1)
-	for i := range torkens {
-		torkens[i] = " "
-	}
-	for i := range words {
-		torkens[i*2] = words[i]
-	}
 
 	sseContent(w)
 	internal.SetCacheControl(w, internal.CacheType_NoCache)
 	w.Header().Set("Connection", "keep-alive")
 
 	ctx := r.Context()
-	for i, tok := range torkens {
+	for i, _ := range words {
 		select {
 		case <-ctx.Done():
 			return
 		default:
 		}
 
-		tC := Token(tok)
+		tC := Token(strings.Join(words[0:i+1], " "))
 		var event bytes.Buffer
 		fmt.Fprintf(&event, "event: token\ndata: ")
 		err := tC.Render(ctx, &event)
@@ -336,6 +329,8 @@ func (gs *GenState) PromptTranslate(w http.ResponseWriter, r *http.Request) {
 	// if err != nil {
 	// 	InformError(fmt.Errorf("render fail"), w)
 	// }
+	fmt.Fprintf(w, "event: done\ndata: <div id=\"stream-complete\"></div>\n\n")
+	flusher.Flush()
 }
 
 func (gs *GenState) PromptInput(w http.ResponseWriter, r *http.Request) {
@@ -600,10 +595,10 @@ func imgDelUrl(id string) string {
 func (gs *GenState) LoadFns() HttpFuncMap {
 	return HttpFuncMap{
 		"/gen_page": {Fn: gs.GenPage, Show: true},
-		templ.SafeURL(PromptInputLB().EntryPoint):         {Fn: gs.PromptInput, Show: false},
-		templ.SafeURL(PromptTranslateInitLB().EntryPoint): {Fn: gs.PromptTranslateInit, Show: false},
-		templ.SafeURL(PromptTranslateLB().EntryPoint):     {Fn: gs.PromptTranslate, Show: false},
-		"/prompt/commit":                         {Fn: gs.PromptCommit, Show: false},
+		templ.SafeURL(PromptInputLB().EntryPoint):         {Fn: gs.PromptInput, Show: true},
+		templ.SafeURL(PromptTranslateInitLB().EntryPoint): {Fn: gs.PromptTranslateInit, Show: true},
+		templ.SafeURL(PromptTranslateLB().EntryPoint):     {Fn: gs.PromptTranslate, Show: true},
+		"/prompt/commit":                         {Fn: gs.PromptCommit, Show: true},
 		"/prompt/img":                            {Fn: gs.FetchImage, Show: false},
 		templ.SafeURL(ImageDelete().EntryPoint):  {Fn: gs.DeleteImage, Show: false},
 		templ.SafeURL(PreviewOpen().EntryPoint):  {Fn: gs.PreviewOpen, Show: false},

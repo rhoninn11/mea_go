@@ -26,9 +26,9 @@ func RegisterHandler(endpoint templ.SafeURL, fnPack HttpFuncPack) {
 		fnPack.Fn(w, r)
 	}
 
-	if fnPack.Show {
-		endpotins = append(endpotins, endpoint)
-	}
+	// if fnPack.Show {
+	// 	endpotins = append(endpotins, endpoint)
+	// }
 
 	http.HandleFunc(string(endpoint), middle)
 }

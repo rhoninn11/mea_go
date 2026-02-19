@@ -29,8 +29,10 @@ templ PromptPadV2(id string, value string, link internal.TargetAction){
             hx-post={link.LinkToAction}
             hx-trigger="input changed delay:1s"
             hx-target={link.Target}>
-            {value}</textarea>
+            {value}
+        </textarea>
         <div id={id+"_pl"}>
+            <span> </span>
             <span>translateion spot {id+"_pl added"}</span>
         </div>
     </div>
@@ -45,5 +47,5 @@ templ Token(tok string) {
 }
 
 templ SseReciver(link string, event string) {
-    <div hx-ext="sse" sse-connect={link} sse-swap={event}></div>
+    <div hx-ext="sse" sse-connect={link} sse-swap={event} sse-close="done"></div>
 }
