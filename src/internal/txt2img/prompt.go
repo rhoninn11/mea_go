@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"math"
 	mea_gen_d "mea_go/src/api/mea.gen.d"
@@ -273,6 +274,23 @@ func (gs *GenState) PromptTranslateInit(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 }
+
+func compAsEvent(ctx context.Context, w io.Writer, evName string, comp templ.Component) error {
+	var event bytes.Buffer
+	fmt.Fprintf(&event, "event: %s\ndata:", evName)
+	err := comp.Render(ctx, &event)
+	if err != nil {
+		return fmt.Errorf("render failed")
+	}
+	fmt.Fprintf(&event, "\n\n")
+
+	_, err = w.Write(event.Bytes())
+	if err != nil {
+		return fmt.Errorf("failed while writing event")
+	}
+	return nil
+}
+
 func (gs *GenState) PromptTranslate(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
@@ -306,30 +324,14 @@ func (gs *GenState) PromptTranslate(w http.ResponseWriter, r *http.Request) {
 		}
 
 		tC := Token(strings.Join(words[0:i+1], " "))
-		var event bytes.Buffer
-		fmt.Fprintf(&event, "event: token\ndata: ")
-		err := tC.Render(ctx, &event)
-		if err != nil {
-			InformError(fmt.Errorf("render fail"), w)
-			return
-		}
-		fmt.Fprintf(&event, "\n\n")
-
-		_, err = w.Write(event.Bytes())
-		if err != nil {
-			InformError(fmt.Errorf("fail at %d", i), w)
-			return
+		if err := compAsEvent(ctx, w, "token", tC); err != nil {
+			InformError(fmt.Errorf("falied at %d | %w", i, err), w)
 		}
 		flusher.Flush()
 		time.Sleep(time.Millisecond * 200)
-
-		fmt.Printf("token sensed %d\n", i)
 	}
-	// err := PresenceBloc().Render(context.Background(), w)
-	// if err != nil {
-	// 	InformError(fmt.Errorf("render fail"), w)
-	// }
-	fmt.Fprintf(w, "event: done\ndata: <div id=\"stream-complete\"></div>\n\n")
+
+	fmt.Fprintf(w, "event: done\ndata:\n\n")
 	flusher.Flush()
 }
 
