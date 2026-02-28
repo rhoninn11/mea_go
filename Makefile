@@ -15,7 +15,7 @@ dev: templ css client
 client:
 	go run src/cmd/mea_client/main.go	
 
-air:
+devel_up:
 	@go tool air
 
 

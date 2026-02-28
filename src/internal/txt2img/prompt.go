@@ -275,10 +275,10 @@ func (gs *GenState) PromptTranslateInit(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-func compAsEvent(ctx context.Context, w io.Writer, evName string, comp templ.Component) error {
+func compAsEvent(w io.Writer, evName string, comp templ.Component) error {
 	var event bytes.Buffer
 	fmt.Fprintf(&event, "event: %s\ndata:", evName)
-	err := comp.Render(ctx, &event)
+	err := comp.Render(context.Background(), &event)
 	if err != nil {
 		return fmt.Errorf("render failed")
 	}
@@ -306,29 +306,39 @@ func (gs *GenState) PromptTranslate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	prompt := gs.prompts[slotKey]
-	fmt.Printf("+++ current prompt |%s|\n", prompt)
 
 	// lets build prototype
 	words := strings.Split(prompt, " ")
+	spans := make([]templ.Component, len(words))
+
+	var td = 2000 / len(words)
+	if td > 200 {
+		td = 200
+	}
 
 	sseContent(w)
 	internal.SetCacheControl(w, internal.CacheType_NoCache)
 	w.Header().Set("Connection", "keep-alive")
 
 	ctx := r.Context()
-	for i, _ := range words {
+	for i, word := range words {
+		spans[i] = Token(word + " ")
+
 		select {
 		case <-ctx.Done():
+			log.Println("client disconnected from sse")
 			return
 		default:
 		}
 
-		tC := Token(strings.Join(words[0:i+1], " "))
-		if err := compAsEvent(ctx, w, "token", tC); err != nil {
+		event := Tokens(spans[:i+1])
+		err := compAsEvent(w, "token", event)
+		if err != nil {
 			InformError(fmt.Errorf("falied at %d | %w", i, err), w)
+			return
 		}
 		flusher.Flush()
-		time.Sleep(time.Millisecond * 200)
+		time.Sleep(time.Millisecond * time.Duration(td))
 	}
 
 	fmt.Fprintf(w, "event: done\ndata:\n\n")

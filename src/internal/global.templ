@@ -16,6 +16,7 @@ templ Global(name string, body templ.Component) {
 
 			<meta charset="UTF-8">
 			<meta name="author" content={ name }>
+			<meta name="htmx-config" content='{"globalViewTransitions": true}'>
 			<link rel="stylesheet" href="/static/style.css">
 			<title>{name}</title>
 		</head>

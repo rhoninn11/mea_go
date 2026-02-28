@@ -45,6 +45,13 @@ templ PresenceBloc() {
 templ Token(tok string) {
     <span>{tok}</span>
 }
+templ Tokens(tokens []templ.Component) {
+    <div class="p-2 bg-slate-300 rounded ">
+    for _, tok := range tokens {
+        @tok
+    }
+    </div>
+}
 
 templ SseReciver(link string, event string) {
     <div hx-ext="sse" sse-connect={link} sse-swap={event} sse-close="done"></div>
