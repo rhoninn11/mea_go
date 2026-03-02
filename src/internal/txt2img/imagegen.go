@@ -3,7 +3,6 @@ package txt2img
 import (
 	"bytes"
 	"fmt"
-	"image/png"
 	mea_gen_d "mea_go/src/api/mea.gen.d"
 	utils "mea_go/src/internal"
 	"os"
@@ -62,50 +61,24 @@ func ImageGen(gen *GenState, comfy *ComfyData) (string, error) {
 			return "", fmt.Errorf("failed to set prompt (%s) | %v", name, err)
 		}
 	}
-
 	fmt.Println("+++ used prompts: ", usedPrompts)
 
-	// firsSlot := gen.promptSlots[0]
-	// prompt := gen.prompts[firsSlot]
-
-	// prompcik := mea_gen_d.SlotedPrompt{
-	// 	Slot:   mea_gen_d.Slot_a,
-	// 	Prompt: prompt,
-	// }
-	// if _, err := serv.SetPrompt(comfy.Ctx, &prompcik); err != nil {
-	// 	return "", fmt.Errorf("failed to set prompt | %v", err)
-	// }
-
 	if _, err := serv.SetOptions(comfy.Ctx, opt); err != nil {
-		return "", fmt.Errorf("!!! options failed, %v", err)
+		return "", fmt.Errorf("!!! options failed, %w", err)
 	}
 
 	pImg, err := serv.Txt2Img(comfy.Ctx, &_plug)
 	if err != nil {
-		return "", fmt.Errorf("!!! txt2img failed, %v", err)
+		return "", fmt.Errorf("!!! txt2img failed, %w", err)
 	}
 
+	yamlObj := FormPrompt(usedSlots, usedPrompts)
 	gImg := utils.ImgProtoToGo(pImg)
-	var buffer = bytes.Buffer{}
-	if err := png.Encode(&buffer, gImg); err != nil {
-		return "", fmt.Errorf("!!! failed to encode %s, %v", imgBasename, err)
-	}
 
 	//updating state
-	gen.addImage(imgBasename, buffer.Bytes())
-
-	//saving image
-	dirImg := utils.DirImage()
-	pngFile := utils.JoinPath(dirImg, utils.PngFilename(imgBasename))
-	if err := data2File(pngFile, buffer); err != nil {
-		return "", fmt.Errorf("!!! failed to encode %s, %v", imgBasename, err)
-	}
-
-	yamlFile := utils.JoinPath(dirImg, utils.YamlFilename(imgBasename))
-	yamlObj := FormPrompt(usedSlots, usedPrompts)
-	err = utils.SaveAsYAML(yamlFile, yamlObj)
+	err = gen.addImage(imgBasename, gImg, yamlObj)
 	if err != nil {
-		return "", fmt.Errorf("!!! failed to save %s, %w", yamlFile, err)
+		return "", fmt.Errorf("img failed to save | %w", err)
 	}
 
 	return imgBasename, nil

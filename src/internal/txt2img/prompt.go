@@ -4,16 +4,20 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"image"
+	"image/png"
 	"io"
 	"log"
 	"math"
 	mea_gen_d "mea_go/src/api/mea.gen.d"
 	"mea_go/src/internal"
+	utils "mea_go/src/internal"
+	"mea_go/src/internal/translte"
 	"net/http"
 	"os"
 	"slices"
 	"strings"
-	"time"
+	"sync"
 
 	"github.com/a-h/templ"
 )
@@ -165,12 +169,35 @@ func init() {
 var emptyMetadata = ImgMetadata{prompts: []string{"", "", ""}}
 
 // hmm maybe simple squil would be adequate, like SQLite or Postgress
-func (gs *GenState) addImage(id string, data []byte) {
+func (gs *GenState) addImage(id string, gImg *image.RGBA, prompts SlotPromptS) error {
+	var err error
+	var pngBfr = bytes.Buffer{}
+
+	err = png.Encode(&pngBfr, gImg)
+	if err != nil {
+		return fmt.Errorf("png encode failed | %w", err)
+	}
+
+	//saving image
+	var dirImg = utils.DirImage()
+
+	pngFile := utils.JoinPath(dirImg, utils.PngFilename(id))
+	if err := data2File(pngFile, pngBfr); err != nil {
+		return fmt.Errorf("!!! failed to save | %w", err)
+	}
+
+	yamlFile := utils.JoinPath(dirImg, utils.YamlFilename(id))
+	err = utils.SaveAsYAML(yamlFile, prompts)
+	if err != nil {
+		return fmt.Errorf("!!! failed to save | %w", err)
+	}
+
 	gs.imageIds = append(gs.imageIds, id)
 	gs.imageData[id] = ImgData{
 		meta:  emptyMetadata,
-		bytes: data,
+		bytes: pngBfr.Bytes(),
 	}
+	return nil
 }
 
 func (gs *GenState) init() {
@@ -309,7 +336,7 @@ func (gs *GenState) PromptTranslate(w http.ResponseWriter, r *http.Request) {
 
 	// lets build prototype
 	words := strings.Split(prompt, " ")
-	spans := make([]templ.Component, len(words))
+	spans := make([]templ.Component, 0, len(words))
 
 	var td = 2000 / len(words)
 	if td > 200 {
@@ -320,27 +347,39 @@ func (gs *GenState) PromptTranslate(w http.ResponseWriter, r *http.Request) {
 	internal.SetCacheControl(w, internal.CacheType_NoCache)
 	w.Header().Set("Connection", "keep-alive")
 
-	ctx := r.Context()
-	for i, word := range words {
-		spans[i] = Token(word + " ")
-
-		select {
-		case <-ctx.Done():
-			log.Println("client disconnected from sse")
-			return
-		default:
-		}
-
-		event := Tokens(spans[:i+1])
-		err := compAsEvent(w, "token", event)
-		if err != nil {
-			InformError(fmt.Errorf("falied at %d | %w", i, err), w)
-			return
-		}
-		flusher.Flush()
-		time.Sleep(time.Millisecond * time.Duration(td))
+	job := translte.TranlateJob{
+		ToTranslate: prompt,
 	}
 
+	fullResponse := make([]string, 0, 64)
+	tokenChan := make(chan string, 64)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for token := range tokenChan {
+			fullResponse = append(fullResponse, token)
+			spans = append(spans, Token(token+" "))
+			event := Tokens(spans)
+			err := compAsEvent(w, "token", event)
+			if err != nil {
+				InformError(fmt.Errorf("falied at %d | %w", len(spans), err), w)
+				return
+			}
+			flusher.Flush()
+		}
+	}()
+
+	err := job.StreamedTranslateion(r.Context(), tokenChan)
+	wg.Wait()
+	if err != nil {
+		InformError(fmt.Errorf("!!! translation failed | %w", err), w)
+		return
+	}
+
+	fullText := strings.Join(fullResponse, "")
+	gs.prompts[slotKey] = fullText
+	fmt.Printf("full resonese was: %s", fullText)
 	fmt.Fprintf(w, "event: done\ndata:\n\n")
 	flusher.Flush()
 }
