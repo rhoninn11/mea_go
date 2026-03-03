@@ -359,7 +359,7 @@ func (gs *GenState) PromptTranslate(w http.ResponseWriter, r *http.Request) {
 		defer wg.Done()
 		for token := range tokenChan {
 			fullResponse = append(fullResponse, token)
-			spans = append(spans, Token(token+" "))
+			spans = append(spans, Token(token))
 			event := Tokens(spans)
 			err := compAsEvent(w, "token", event)
 			if err != nil {
@@ -511,24 +511,26 @@ func (ps *GenState) DeleteImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	imgFile := internal.JoinPath(internal.DirImage(), internal.Filename(id, "png"))
-	if _, err := os.Stat(imgFile); err != nil {
-		InformError(fmt.Errorf("file for %s dont exist | %v", id, err), w)
-		return
+	exts := []string{"png", "yaml"}
+	for _, ext := range exts {
+		imgFile := internal.JoinPath(internal.DirImage(), internal.Filename(id, ext))
+		if _, err := os.Stat(imgFile); err != nil {
+			InformError(fmt.Errorf("file for %s dont exist | %v", id, err), w)
+			return
+		}
+
+		if err := os.RemoveAll(imgFile); err != nil {
+			InformError(fmt.Errorf("%s file deletion failed", id), w)
+			return
+		}
 	}
 
-	if err := os.RemoveAll(imgFile); err != nil {
-		InformError(fmt.Errorf("%s file deletion failed", id), w)
-		return
-	}
-
-	// TODO: remove yaml also
 	delete(ps.imageData, id)
 	if idx, ok := slices.BinarySearch(ps.imageIds, id); ok {
 		ps.imageIds[idx] = "deleted"
 		fmt.Printf("marked as deleted\n")
 	}
-	fmt.Println("+++ succesfully deleted: ", imgFile)
+	fmt.Printf("+++ succesfully deleted: %s\n", id)
 	w.WriteHeader(200)
 }
 
