@@ -56,6 +56,7 @@ type PromptSlots = []string
 type GenState struct {
 	prompts     PromptMap
 	promptSlots []mea_gen_d.Slot
+	toTranslate []bool
 	comfyData   *ComfyData
 	imageData   ImgMap
 	imageIds    []string
@@ -209,6 +210,7 @@ func (gs *GenState) init() {
 
 	size := len(gs.promptSlots)
 	gs.prompts = make(PromptMap, size)
+	gs.toTranslate = make([]bool, size)
 	gs.imageData = make(ImgMap, 128)
 	gs.imageIds = make([]string, 0, 128)
 	for _, slot := range memory.promptSlots {
@@ -283,18 +285,20 @@ func (gs *GenState) PromptEditor(hid HtmxId) templ.Component {
 }
 func (gs *GenState) PromptTranslateInit(w http.ResponseWriter, r *http.Request) {
 	lb := PromptTranslateLB()
-	slot := r.PathValue("slot")
+	slot_name := r.PathValue("slot")
 
-	fmt.Printf("+++ wait what\n")
-	_, ok := SlotMapping[slot]
+	slot, ok := SlotMapping[slot_name]
 	if !ok {
 		InformError(fmt.Errorf("bad slot 1"), w)
 		return
 	}
-	fmt.Printf("+++ ale chociaż mamy slot %s\n", slot)
 
 	htmlContent(w)
-	link := lb.FmtLink(slot)
+	if !gs.toTranslate[slot] {
+		Tokens([]templ.Component{Token("Translation disabled")}).Render(r.Context(), w)
+		return
+	}
+	link := lb.FmtLink(slot_name)
 	err := SseReciver(link, "token").Render(r.Context(), w)
 	if err != nil {
 		InformError(err, w)
@@ -378,7 +382,7 @@ func (gs *GenState) PromptTranslate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fullText := strings.Join(fullResponse, "")
-	gs.prompts[slotKey] = fullText
+	// gs.prompts[slotKey] = fullText
 	fmt.Printf("full resonese was: %s", fullText)
 	fmt.Fprintf(w, "event: done\ndata:\n\n")
 	flusher.Flush()
@@ -549,6 +553,28 @@ func (gs *GenState) GenPage(w http.ResponseWriter, r *http.Request) {
 	var lastImage templ.Component
 	var images []templ.Component
 	var drawImages int = 0
+
+	ImgName := func(x int, y int) string {
+		return fmt.Sprintf("img_slot_%d_%d", x, y)
+	}
+
+	ImgIdx := func(x int, y int) int {
+		return x + y*4
+	}
+
+	var grid = make(map[string]templ.Component, 4*4)
+outter:
+	for x := range 4 {
+		for y := range 4 {
+			idx := ImgIdx(x, y)
+			if idx >= len(gs.imageIds) {
+				break outter
+			}
+
+			grid[ImgName(x, y)] = ImgComp(gs.imageIds[idx])
+		}
+	}
+	_ = grid
 
 	for _, idImg := range gs.imageIds {
 		// fmt.Printf("|id image - %s\n", idImg)

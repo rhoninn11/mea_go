@@ -23,56 +23,68 @@ type SlotPromptS struct {
 	Sequence []string     `yaml:"seq"`
 }
 
-func FormPrompt(usedSlots []string, usedPrompts []string) SlotPromptS {
-	var few = make([]SlotPrompt, 0, len(usedSlots))
-	for i := range usedSlots {
+func (sps *SlotPromptS) init(chain []mea_gen_d.SlotedPrompt) SlotPromptS {
+	return FormPrompt(chain)
+}
+
+func FormPrompt(chain []mea_gen_d.SlotedPrompt) SlotPromptS {
+	well := make([]SlotPrompt, 0, len(chain))
+	sequence := make([]string, 0, len(chain))
+	for _, one := range chain {
+		var slotName = one.Slot.String()
 		single := SlotPrompt{
-			SlotName: usedSlots[i],
-			Prompt:   usedPrompts[i],
+			SlotName: slotName,
+			Prompt:   one.Prompt,
 		}
-		few = append(few, single)
+		well = append(well, single)
+		sequence = append(sequence, slotName)
 	}
 
 	return SlotPromptS{
-		Promps:   few,
-		Sequence: usedSlots,
+		Promps:   well,
+		Sequence: sequence,
 	}
 }
 func ImageGen(gen *GenState, comfy *ComfyData) (string, error) {
 	var _plug mea_gen_d.Empty
 	var imgBasename = uniqueName()
 
-	opt := comfy.Options
-	serv := comfy.Service
+	comfyOpts := comfy.Options
+	comfyGrpc := comfy.Service
 
-	usedSlots := make([]string, 0, 4)
-	usedPrompts := make([]string, 0, 4)
-	for name, slot := range SlotMapping {
-		sloted := mea_gen_d.SlotedPrompt{
-			Slot:   slot,
-			Prompt: gen.prompts[slot],
-		}
-		if sloted.Prompt == "" {
+	var slots = []mea_gen_d.Slot{mea_gen_d.Slot_a, mea_gen_d.Slot_b, mea_gen_d.Slot_c}
+	var usedSlots = make([]mea_gen_d.Slot, 0, len(slots))
+	var slotedPrompts = make([]mea_gen_d.SlotedPrompt, 0, len(slots))
+
+	for _, slot := range slots {
+		prompt := gen.prompts[slot]
+		if prompt == "" {
 			continue
 		}
-		usedSlots = append(usedSlots, name)
-		usedPrompts = append(usedPrompts, sloted.Prompt)
-		if _, err := serv.SetPrompt(comfy.Ctx, &sloted); err != nil {
-			return "", fmt.Errorf("failed to set prompt (%s) | %v", name, err)
+
+		sloted := mea_gen_d.SlotedPrompt{
+			Slot:   slot,
+			Prompt: prompt,
+		}
+		slotedPrompts = append(slotedPrompts, sloted)
+		usedSlots = append(usedSlots, slot)
+		if _, err := comfyGrpc.SetPrompt(comfy.Ctx, &sloted); err != nil {
+			return "", fmt.Errorf("failed to set prompt (%s) | %v", slot.String(), err)
 		}
 	}
-	fmt.Println("+++ used prompts: ", usedPrompts)
 
-	if _, err := serv.SetOptions(comfy.Ctx, opt); err != nil {
+	comfyOpts.PromptChain = usedSlots
+
+	if _, err := comfyGrpc.SetOptions(comfy.Ctx, comfyOpts); err != nil {
 		return "", fmt.Errorf("!!! options failed, %w", err)
 	}
 
-	pImg, err := serv.Txt2Img(comfy.Ctx, &_plug)
+	pImg, err := comfyGrpc.Txt2Img(comfy.Ctx, &_plug)
 	if err != nil {
 		return "", fmt.Errorf("!!! txt2img failed, %w", err)
 	}
 
-	yamlObj := FormPrompt(usedSlots, usedPrompts)
+	yamlObj := FormPrompt(slotedPrompts)
 	gImg := utils.ImgProtoToGo(pImg)
 
 	//updating state
