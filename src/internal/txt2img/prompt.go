@@ -535,7 +535,11 @@ func (ps *GenState) DeleteImage(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("marked as deleted\n")
 	}
 	fmt.Printf("+++ succesfully deleted: %s\n", id)
-	w.WriteHeader(200)
+
+	htmlContent(w)
+
+	// internal.ProcedeNext()
+	internal.Block(1).Render(r.Context(), w)
 }
 
 // show all results and editor
@@ -563,14 +567,13 @@ func (gs *GenState) GenPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var grid = make(map[string]templ.Component, 4*4)
-outter:
-	for x := range 4 {
-		for y := range 4 {
+	for y := range 4 {
+		for x := range 4 {
 			idx := ImgIdx(x, y)
 			if idx >= len(gs.imageIds) {
-				break outter
+				grid[ImgName(x, y)] = internal.Block(idx)
+				continue
 			}
-
 			grid[ImgName(x, y)] = ImgComp(gs.imageIds[idx])
 		}
 	}
@@ -588,26 +591,20 @@ outter:
 
 	}
 
-	var imgsLeft int = len(images)
-	// TODO: może jakoś ustrukturyzować tą siątkę zdjęć
-	// fmt.Printf("imgs %d\n", imgsLeft)
-	// fmt.Printf("rows %d\n", len(rows))
-
-	var off int = 0
-	for {
-		if imgsLeft <= 4 {
-			start := off
-			end := off + imgsLeft
-			rows = append(rows, internal.FlexRow(images[start:end]))
-			break
+	col := make([]templ.Component, 0, 4)
+	for y := range 4 {
+		row := make([]templ.Component, 0, 4)
+		for x := range 4 {
+			name := ImgName(x, y)
+			fmt.Printf("+++ cell name: %s\n", name)
+			row = append(row, grid[name])
 		}
-		rows = append(rows, internal.FlexRow(images[off:off+4]))
-		imgsLeft -= 4
-		off += 4
+		col = append(col, internal.FlexRow(row))
 	}
+
 	// it will become image matrix
 	slices.Reverse(rows)
-	imgs := internal.FeedColumn(rows, "imgs")
+	imgs := internal.FeedColumn(col, "imgs")
 	mainContent := internal.FeedColumn([]templ.Component{
 		gs.PromptEditor(EditorHid()),
 		imgs,

@@ -56,3 +56,7 @@ templ Tokens(tokens []templ.Component) {
 templ SseReciver(link string, event string) {
     <div hx-ext="sse" sse-connect={link} sse-swap={event} sse-close="done"></div>
 }
+
+templ Bloc() {
+    <div class="size-16 border-l-slate-400 border-r-slate-200"></div>
+}
