@@ -2,11 +2,11 @@ package txt2img
 
 import "mea_go/src/internal"
 
-templ GenButton(target string) {
+templ GenButton(target HtmxId) {
     <div>
         <button hx-get="/prompt/commit"
             hx-swap="outerHTML"
-            hx-target={target}
+            hx-target={target.TargName}
         >Gen image</button>
     </div>
 }
@@ -59,4 +59,8 @@ templ SseReciver(link string, event string) {
 
 templ Bloc() {
     <div class="size-16 border-l-slate-400 border-r-slate-200"></div>
+}
+
+templ IdWrap(hid HtmxId, elem templ.Component) {
+    <div id={hid.JustName}>@elem</div>
 }

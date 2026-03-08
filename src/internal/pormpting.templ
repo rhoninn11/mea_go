@@ -19,16 +19,7 @@ templ FeedColumn(rows []templ.Component, feedID string) {
     </div>
 }
 
-templ GenButton(target string) {
-    <div>
-        <button hx-get="/prompt/commit"
-            hx-swap="outerHTML"
-            hx-target={target}
-        >Gen image</button>
-    </div>
-}
-
-templ JustImg(imgUrl string, delUrl string, leftCorner templ.Component, rightCorner templ.Component) {
+templ JustImg(imgUrl string, leftCorner templ.Component, rightCorner templ.Component) {
     <div class="relative">
         <img src={imgUrl} class="size-64">
         <div class="absolute top-4 left-4 bg-slate-900 text-slate-300 size-8 text-lg flex items-center justify-center rounded-lg">
@@ -38,6 +29,15 @@ templ JustImg(imgUrl string, delUrl string, leftCorner templ.Component, rightCor
             @rightCorner
         </div>
     </div>
+}
+
+templ EmptyImgSlot() {
+    <div class="relative size-64">
+        <div class="absolute top-4 right-4 bg-slate-900 text-slate-300 size-8 text-lg flex items-center justify-center rounded-lg">
+           @Block(0)
+        </div>
+    </div>
+
 }
 templ BigImg(imgUrl string) {
     <div class="justify-center">

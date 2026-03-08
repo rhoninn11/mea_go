@@ -8,7 +8,6 @@ import (
 	"image/png"
 	"io"
 	"log"
-	"math"
 	mea_gen_d "mea_go/src/api/mea.gen.d"
 	"mea_go/src/internal"
 	utils "mea_go/src/internal"
@@ -58,9 +57,16 @@ type GenState struct {
 	promptSlots []mea_gen_d.Slot
 	toTranslate []bool
 	comfyData   *ComfyData
-	imageData   ImgMap
-	imageIds    []string
+	otherState  *OtherState
 	system      *any
+}
+
+type OtherState struct {
+	imageData   map[string]ImgData
+	imageIds    []string
+	imageSpots  map[string]string
+	usedSpots   []string
+	unusedSpots []string
 }
 
 type FlowData struct {
@@ -152,6 +158,9 @@ func DeleteSinkHid() HtmxId {
 func TranslateSinkHid() HtmxId {
 	return NamedId("translate_sink")
 }
+func ImgGenSink() HtmxId {
+	return NamedId("image_sink")
+}
 
 func InvokeModal(link string) ModalDesc {
 	return ModalDesc{
@@ -193,8 +202,9 @@ func (gs *GenState) addImage(id string, gImg *image.RGBA, prompts SlotPromptS) e
 		return fmt.Errorf("!!! failed to save | %w", err)
 	}
 
-	gs.imageIds = append(gs.imageIds, id)
-	gs.imageData[id] = ImgData{
+	ogs := gs.otherState
+	ogs.imageIds = append(ogs.imageIds, id)
+	ogs.imageData[id] = ImgData{
 		meta:  emptyMetadata,
 		bytes: pngBfr.Bytes(),
 	}
@@ -211,54 +221,88 @@ func (gs *GenState) init() {
 	size := len(gs.promptSlots)
 	gs.prompts = make(PromptMap, size)
 	gs.toTranslate = make([]bool, size)
-	gs.imageData = make(ImgMap, 128)
-	gs.imageIds = make([]string, 0, 128)
+	for i := range size {
+		gs.toTranslate[i] = true
+	}
 	for _, slot := range memory.promptSlots {
 		gs.prompts[slot] = ""
 	}
 
 	var loadeImgsNum int = 0
-	func(gs *GenState) {
-		imgDir := internal.DirImage()
-		entries, err := os.ReadDir(imgDir)
-		if err != nil {
-			log.Fatalln("scaning imgs", err.Error())
-		}
-		panicker := internal.Panicker(4)
-		for _, entry := range entries {
-			name := entry.Name()
-			if !strings.HasSuffix(name, ".png") {
-				continue
-			}
-			basename := strings.TrimSuffix(name, ".png")
-			yamlFile := internal.Filename(basename, "yaml")
-			_ = yamlFile
-
-			imgPath := strings.Join([]string{imgDir, name}, "/")
-			metadataPath := strings.Join([]string{imgDir, name}, "/")
-
-			var xd = ImgMetadata{prompts: []string{"", "", ""}}
-			if _, err := os.Stat(metadataPath); err != nil {
-
-			}
-
-			data, err := os.ReadFile(imgPath)
-			if panicker.HasError(err) {
-				continue
-			}
-
-			loadeImgsNum += 1
-			gs.imageIds = append(gs.imageIds, basename)
-			gs.imageData[basename] = ImgData{
-				bytes: data,
-				meta:  xd,
-			}
-		}
-	}(gs)
+	gs.otherState = loadOtherState()
 
 	log.Default().Println("INFO: ", fmt.Sprintf("loaded (%d) imgs on init", loadeImgsNum))
 }
+func slotName(x int, y int) string {
+	return fmt.Sprintf("img_slot_%d_%d", x, y)
+}
+func slotIdx(x int, y int) int {
+	return y*4 + x
+}
+func loadOtherState() *OtherState {
+	var loadeImgsNum int = 0
+	imgDir := internal.DirImage()
 
+	var oStat = OtherState{
+		imageData:  make(ImgMap, 128),
+		imageIds:   make([]string, 0, 128),
+		imageSpots: make(map[string]string, 16),
+	}
+
+	entries, err := os.ReadDir(imgDir)
+	if err != nil {
+		log.Fatalln("scaning imgs", err.Error())
+	}
+	panicker := internal.Panicker(4)
+	for _, entry := range entries {
+		name := entry.Name()
+		if !strings.HasSuffix(name, ".png") {
+			continue
+		}
+		basename := strings.TrimSuffix(name, ".png")
+		yamlFile := internal.Filename(basename, "yaml")
+		_ = yamlFile
+
+		imgPath := strings.Join([]string{imgDir, name}, "/")
+		metadataPath := strings.Join([]string{imgDir, name}, "/")
+
+		var xd = ImgMetadata{prompts: []string{"", "", ""}}
+		if _, err := os.Stat(metadataPath); err != nil {
+
+		}
+
+		data, err := os.ReadFile(imgPath)
+		if panicker.HasError(err) {
+			continue
+		}
+
+		loadeImgsNum += 1
+		oStat.imageIds = append(oStat.imageIds, basename)
+		oStat.imageData[basename] = ImgData{
+			bytes: data,
+			meta:  xd,
+		}
+	}
+
+	for y := range 4 {
+		for x := range 4 {
+			oStat.imageSpots[slotName(x, y)] = ""
+		}
+	}
+	for y := range 4 {
+		for x := range 4 {
+			spotName := slotName(x, y)
+			var posibleId = ""
+			i := slotIdx(x, y)
+			if i < len(oStat.imageIds) {
+				posibleId = oStat.imageIds[i]
+			}
+			oStat.imageSpots[spotName] = posibleId
+		}
+	}
+
+	return &oStat
+}
 func (gs *GenState) PromptEditor(hid HtmxId) templ.Component {
 	var promptInput = PromptInputLB()
 
@@ -273,7 +317,8 @@ func (gs *GenState) PromptEditor(hid HtmxId) templ.Component {
 		return PromptPadV2(id, currPrompt, ta)
 	}
 
-	submmitBtn := GenButton(hid.TargName)
+	genSink := ImgGenSink()
+	submmitBtn := GenButton(genSink)
 
 	editor := []templ.Component{
 		padFromSlot(SLOT_A, mea_gen_d.Slot_a),
@@ -382,7 +427,7 @@ func (gs *GenState) PromptTranslate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fullText := strings.Join(fullResponse, "")
-	// gs.prompts[slotKey] = fullText
+	gs.prompts[slotKey] = fullText
 	fmt.Printf("full resonese was: %s", fullText)
 	fmt.Fprintf(w, "event: done\ndata:\n\n")
 	flusher.Flush()
@@ -450,7 +495,7 @@ func ImgComp(idImg string) templ.Component {
 		Target:       DeleteSinkHid().TargName,
 	}
 	delBtn := internal.ButtonAction(aLink, asciiDel)
-	return internal.JustImg(imgUrl(idImg), imgDelUrl(idImg), forPreviewBtn, delBtn)
+	return internal.JustImg(imgUrl(idImg), forPreviewBtn, delBtn)
 }
 
 type TCmpt = templ.Component
@@ -466,7 +511,7 @@ func (gs *GenState) PromptCommit(w http.ResponseWriter, r *http.Request) {
 
 	// tu bym mógł zapisać prompty do bazy danych
 	// może jako proto jako blob binarny w sql lite?
-	id, err := ImageGen(gs, gs.comfyData)
+	newImgId, err := ImageGen(gs, gs.comfyData)
 	if err != nil {
 		log.Default().Println("ERR: ", err.Error())
 		http.Error(w, "", 500)
@@ -474,13 +519,10 @@ func (gs *GenState) PromptCommit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	internal.SetContentType(w, internal.ContentType_Html)
-	something := internal.Block(888)
-
-	promptId := NamedId("prompt_editor")
 	feed := internal.FeedColumn(
 		[]templ.Component{
-			internal.JustImg(imgUrl(id), imgDelUrl(id), something, something),
-			gs.PromptEditor(promptId),
+			ImgComp(newImgId),
+			gs.PromptEditor(EditorHid()),
 		}, "xd")
 	feed.Render(context.Background(), w)
 }
@@ -493,7 +535,8 @@ func (ps *GenState) FetchImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	imgData, ok := ps.imageData[id[0]]
+	ops := ps.otherState
+	imgData, ok := ops.imageData[id[0]]
 	if !ok {
 		http.Error(w, "bad request", 500)
 		return
@@ -510,7 +553,8 @@ func (ps *GenState) FetchImage(w http.ResponseWriter, r *http.Request) {
 func (ps *GenState) DeleteImage(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
-	if _, ok := ps.imageData[id]; !ok {
+	ops := ps.otherState
+	if _, ok := ops.imageData[id]; !ok {
 		InformError(fmt.Errorf("data for %s not present", id), w)
 		return
 	}
@@ -529,9 +573,9 @@ func (ps *GenState) DeleteImage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	delete(ps.imageData, id)
-	if idx, ok := slices.BinarySearch(ps.imageIds, id); ok {
-		ps.imageIds[idx] = "deleted"
+	delete(ops.imageData, id)
+	if idx, ok := slices.BinarySearch(ops.imageIds, id); ok {
+		ops.imageIds[idx] = "deleted"
 		fmt.Printf("marked as deleted\n")
 	}
 	fmt.Printf("+++ succesfully deleted: %s\n", id)
@@ -547,63 +591,29 @@ func (gs *GenState) GenPage(w http.ResponseWriter, r *http.Request) {
 	internal.SetContentType(w, internal.ContentType_Html)
 
 	const colNum = 4
-	var imgNum = len(gs.imageIds)
-	var rowNum = int(math.Ceil(float64(imgNum) / colNum))
-	// fmt.Println("+++ rows ", rowNum, " cols ", colNum)
-
-	rows := make([]templ.Component, 0, rowNum)
-	// row := make([]templ.Component, colNum)
-
-	var lastImage templ.Component
-	var images []templ.Component
-	var drawImages int = 0
-
-	ImgName := func(x int, y int) string {
-		return fmt.Sprintf("img_slot_%d_%d", x, y)
-	}
-
-	ImgIdx := func(x int, y int) int {
-		return x + y*4
-	}
-
-	var grid = make(map[string]templ.Component, 4*4)
-	for y := range 4 {
-		for x := range 4 {
-			idx := ImgIdx(x, y)
-			if idx >= len(gs.imageIds) {
-				grid[ImgName(x, y)] = internal.Block(idx)
-				continue
-			}
-			grid[ImgName(x, y)] = ImgComp(gs.imageIds[idx])
-		}
-	}
-	_ = grid
-
-	for _, idImg := range gs.imageIds {
-		// fmt.Printf("|id image - %s\n", idImg)
-		if idImg == "deleted" {
-			continue
-		}
-
-		drawImages += 1
-		lastImage = ImgComp(idImg)
-		images = append(images, lastImage)
-
-	}
+	ogs := gs.otherState
 
 	col := make([]templ.Component, 0, 4)
 	for y := range 4 {
 		row := make([]templ.Component, 0, 4)
 		for x := range 4 {
-			name := ImgName(x, y)
-			fmt.Printf("+++ cell name: %s\n", name)
-			row = append(row, grid[name])
+			name := slotName(x, y)
+
+			id := ogs.imageSpots[name]
+			fmt.Printf("- spot %s has id %s\n", name, id)
+			var choice templ.Component
+			if id != "" {
+				choice = ImgComp(id)
+			} else {
+				choice = internal.EmptyImgSlot()
+			}
+
+			row = append(row, IdWrap(NamedId(name), choice))
 		}
 		col = append(col, internal.FlexRow(row))
 	}
 
 	// it will become image matrix
-	slices.Reverse(rows)
 	imgs := internal.FeedColumn(col, "imgs")
 	mainContent := internal.FeedColumn([]templ.Component{
 		gs.PromptEditor(EditorHid()),
@@ -616,6 +626,7 @@ func (gs *GenState) GenPage(w http.ResponseWriter, r *http.Request) {
 		Sinks: []HtmxId{
 			DeleteSinkHid(),
 			TranslateSinkHid(),
+			ImgGenSink(),
 		},
 	}
 	wholePage := internal.PageWithSidebar(opts)
