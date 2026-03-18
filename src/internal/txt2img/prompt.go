@@ -14,7 +14,6 @@ import (
 	"mea_go/src/internal/translte"
 	"net/http"
 	"os"
-	"slices"
 	"strings"
 	"sync"
 
@@ -59,14 +58,6 @@ type GenState struct {
 	comfyData   *ComfyData
 	otherState  *OtherState
 	system      *any
-}
-
-type OtherState struct {
-	imageData   map[string]ImgData
-	imageIds    []string
-	imageSpots  map[string]string
-	usedSpots   []string
-	unusedSpots []string
 }
 
 type FlowData struct {
@@ -202,12 +193,7 @@ func (gs *GenState) addImage(id string, gImg *image.RGBA, prompts SlotPromptS) e
 		return fmt.Errorf("!!! failed to save | %w", err)
 	}
 
-	ogs := gs.otherState
-	ogs.imageIds = append(ogs.imageIds, id)
-	ogs.imageData[id] = ImgData{
-		meta:  emptyMetadata,
-		bytes: pngBfr.Bytes(),
-	}
+	gs.otherState.addImg(id, pngBfr.Bytes())
 	return nil
 }
 
@@ -229,79 +215,9 @@ func (gs *GenState) init() {
 	}
 
 	var loadeImgsNum int = 0
-	gs.otherState = loadOtherState()
-
-	log.Default().Println("INFO: ", fmt.Sprintf("loaded (%d) imgs on init", loadeImgsNum))
-}
-func slotName(x int, y int) string {
-	return fmt.Sprintf("img_slot_%d_%d", x, y)
-}
-func slotIdx(x int, y int) int {
-	return y*4 + x
-}
-func loadOtherState() *OtherState {
-	var loadeImgsNum int = 0
-	imgDir := internal.DirImage()
-
-	var oStat = OtherState{
-		imageData:  make(ImgMap, 128),
-		imageIds:   make([]string, 0, 128),
-		imageSpots: make(map[string]string, 16),
-	}
-
-	entries, err := os.ReadDir(imgDir)
-	if err != nil {
-		log.Fatalln("scaning imgs", err.Error())
-	}
-	panicker := internal.Panicker(4)
-	for _, entry := range entries {
-		name := entry.Name()
-		if !strings.HasSuffix(name, ".png") {
-			continue
-		}
-		basename := strings.TrimSuffix(name, ".png")
-		yamlFile := internal.Filename(basename, "yaml")
-		_ = yamlFile
-
-		imgPath := strings.Join([]string{imgDir, name}, "/")
-		metadataPath := strings.Join([]string{imgDir, name}, "/")
-
-		var xd = ImgMetadata{prompts: []string{"", "", ""}}
-		if _, err := os.Stat(metadataPath); err != nil {
-
-		}
-
-		data, err := os.ReadFile(imgPath)
-		if panicker.HasError(err) {
-			continue
-		}
-
-		loadeImgsNum += 1
-		oStat.imageIds = append(oStat.imageIds, basename)
-		oStat.imageData[basename] = ImgData{
-			bytes: data,
-			meta:  xd,
-		}
-	}
-
-	for y := range 4 {
-		for x := range 4 {
-			oStat.imageSpots[slotName(x, y)] = ""
-		}
-	}
-	for y := range 4 {
-		for x := range 4 {
-			spotName := slotName(x, y)
-			var posibleId = ""
-			i := slotIdx(x, y)
-			if i < len(oStat.imageIds) {
-				posibleId = oStat.imageIds[i]
-			}
-			oStat.imageSpots[spotName] = posibleId
-		}
-	}
-
-	return &oStat
+	logger := log.Default()
+	gs.otherState = loadOtherState(logger)
+	logger.Println("INFO: ", fmt.Sprintf("loaded (%d) imgs on init", loadeImgsNum))
 }
 func (gs *GenState) PromptEditor(hid HtmxId) templ.Component {
 	var promptInput = PromptInputLB()
@@ -518,13 +434,18 @@ func (gs *GenState) PromptCommit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// ta := internal.TargetAction{
+	// 	Target:       ImgGenSink().TargName,
+	// 	LinkToAction: promptInput.FmtLink(id),
+	// }
+
+	spot := gs.otherState.placeInNewSpot(newImgId)
+	_ = spot
+
 	internal.SetContentType(w, internal.ContentType_Html)
-	feed := internal.FeedColumn(
-		[]templ.Component{
-			ImgComp(newImgId),
-			gs.PromptEditor(EditorHid()),
-		}, "xd")
-	feed.Render(context.Background(), w)
+	wrapped := IdWrap(ImgGenSink(), ImgComp(newImgId))
+	wrapped.Render(context.Background(), w)
+
 }
 
 func (ps *GenState) FetchImage(w http.ResponseWriter, r *http.Request) {
@@ -573,11 +494,7 @@ func (ps *GenState) DeleteImage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	delete(ops.imageData, id)
-	if idx, ok := slices.BinarySearch(ops.imageIds, id); ok {
-		ops.imageIds[idx] = "deleted"
-		fmt.Printf("marked as deleted\n")
-	}
+	ops.deleteImg(id)
 	fmt.Printf("+++ succesfully deleted: %s\n", id)
 
 	htmlContent(w)
@@ -597,13 +514,13 @@ func (gs *GenState) GenPage(w http.ResponseWriter, r *http.Request) {
 	for y := range 4 {
 		row := make([]templ.Component, 0, 4)
 		for x := range 4 {
-			name := slotName(x, y)
+			name := spotName(x, y)
 
-			id := ogs.imageSpots[name]
-			fmt.Printf("- spot %s has id %s\n", name, id)
+			spotId := ogs.spotHolder[name]
+			fmt.Printf("- spot %s has id %s\n", name, spotId)
 			var choice templ.Component
-			if id != "" {
-				choice = ImgComp(id)
+			if spotId != emptySpot {
+				choice = ImgComp(spotId)
 			} else {
 				choice = internal.EmptyImgSlot()
 			}

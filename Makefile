@@ -24,3 +24,7 @@ build_site: templ css
 
 proto: 
 	go run src/cmd/protogen.go
+
+ollama:
+	CUDA_VISIBLE_DEVICES="" ollama serve
+
