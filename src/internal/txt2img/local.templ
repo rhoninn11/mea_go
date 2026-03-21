@@ -25,12 +25,22 @@ templ PromptPad(id string, value string, link string, target string){
 }
 templ PromptPadV2(id string, value string, link internal.TargetAction){
     <div class="flex flex-col bg-slate-600 p-4 m-1">
-        <textarea class="bg-slate-400" name={id} 
-            hx-post={link.LinkToAction}
-            hx-trigger="input changed delay:1s"
-            hx-target={link.Target}>
-            {value}
-        </textarea>
+        <div class="flex flex-row">
+            <textarea class="bg-slate-400 flex-1" name={id} 
+                hx-post={link.LinkToAction}
+                hx-trigger="input changed delay:1s"
+                hx-target={link.Target}>
+                {value}
+            </textarea>
+        </div>
+        <div>
+            <input type="radio" id={id+"t0"} name="to_translate" value="none">
+            <label for={id+"t0"}> - </label>
+            <input type="radio" id={id+"t1"} name="to_translate" value="pl2en">
+            <label for={id+"t1"}> pl -> en </label>
+            <input type="radio" id={id+"t2"} name="to_translate" value="en2pl">
+            <label for={id+"t2"}> en -> pl </label>
+        </div>
         <div id={id+"_pl"}>
             <span> </span>
             <span>translateion spot {id+"_pl added"}</span>

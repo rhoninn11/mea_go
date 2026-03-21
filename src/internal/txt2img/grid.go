@@ -14,6 +14,8 @@ type GridSize struct {
 	y int
 }
 
+const spotNum = 16
+
 var g4x4 = GridSize{
 	x: 4,
 	y: 4,
@@ -22,44 +24,70 @@ var g4x4 = GridSize{
 type ImgId = string
 type SpotId = string
 
+type Stats struct {
+	imgNum     int
+	imgMemSize int64
+	info       string
+}
+
+func (s *Stats) inform() string {
+	bldr := strings.Builder{}
+	bldr.WriteString(fmt.Sprintf("+++ %d images loaded\n", s.imgNum))
+
+	kb := s.imgMemSize / 1024
+	mb := float32(kb) / 1024
+	if mb < 0 {
+		bldr.WriteString(fmt.Sprintf("+++ using %d kb\n", kb))
+	} else {
+		bldr.WriteString(fmt.Sprintf("+++ using %02.f mb\n", mb))
+	}
+
+	return bldr.String()
+}
+
 type OtherState struct {
 	imageIds   []ImgId
 	imageData  map[ImgId]ImgData
 	imageSpots map[ImgId]SpotId
 	spotHolder map[SpotId]ImgId
+
+	occupied [spotNum]bool
+	stats    *Stats
 }
 
 const emptySpot = ""
 
 func loadOtherState(logger *log.Logger) *OtherState {
-	var loadeImgsNum int = 0
+	var panicker = internal.Panicker(4)
+	var imgStats = Stats{}
+
 	imgDir := internal.DirImage()
 
 	var oStat = OtherState{
 		imageIds:   make([]string, 0, 128),
 		imageData:  make(map[ImgId]ImgData, 128),
-		spotHolder: make(map[string]string, 16),
-		imageSpots: make(map[string]string, 16),
+		spotHolder: make(map[string]string, spotNum),
+		imageSpots: make(map[string]string, spotNum),
+
+		stats: &imgStats,
 	}
 
 	entries, err := os.ReadDir(imgDir)
 	if err != nil {
 		log.Fatalln("scaning imgs", err.Error())
 	}
-	panicker := internal.Panicker(4)
 	for _, entry := range entries {
-		name := entry.Name()
-		if !strings.HasSuffix(name, ".png") {
+		pngfile := entry.Name()
+		if !strings.HasSuffix(pngfile, ".png") {
 			continue
 		}
-		basename := strings.TrimSuffix(name, ".png")
+		basename := strings.TrimSuffix(pngfile, ".png")
 		yamlFile := internal.Filename(basename, "yaml")
 		_ = yamlFile
 
-		imgPath := strings.Join([]string{imgDir, name}, "/")
-		metadataPath := strings.Join([]string{imgDir, name}, "/")
+		imgPath := strings.Join([]string{imgDir, pngfile}, "/")
+		metadataPath := strings.Join([]string{imgDir, yamlFile}, "/")
 
-		var xd = ImgMetadata{prompts: []string{"", "", ""}}
 		if _, err := os.Stat(metadataPath); err != nil {
 
 		}
@@ -69,17 +97,11 @@ func loadOtherState(logger *log.Logger) *OtherState {
 			continue
 		}
 
-		loadeImgsNum += 1
-		oStat.imageIds = append(oStat.imageIds, basename)
-		oStat.imageData[basename] = ImgData{
-			bytes: data,
-			meta:  xd,
-		}
+		oStat.addImg(basename, data)
 	}
 
-	logger.Printf("slots empty prefil")
+	fmt.Print(oStat.stats.inform())
 
-	var imgCount = 0
 	for y := range g4x4.y {
 		for x := range g4x4.x {
 			spotName := spotName(x, y)
@@ -90,14 +112,11 @@ func loadOtherState(logger *log.Logger) *OtherState {
 			}
 
 			var imgId = oStat.imageIds[index]
-			logger.Printf("id is %s", imgId)
 
 			oStat.imageSpots[imgId] = spotName
 			oStat.spotHolder[spotName] = imgId
-			imgCount++
 		}
 	}
-	logger.Printf("actuall content fill: %d imgs places", imgCount)
 
 	return &oStat
 }
@@ -122,11 +141,14 @@ func (oth *OtherState) deleteImg(imgId ImgId) {
 	}
 
 }
-func (oth *OtherState) addImg(id string, imgBts []byte) {
+func (oth *OtherState) addImg(id string, imgData []byte) {
+	oth.stats.imgMemSize += int64(len(imgData))
+	oth.stats.imgNum += 1
+
 	oth.imageIds = append(oth.imageIds, id)
 	oth.imageData[id] = ImgData{
 		meta:  emptyMetadata,
-		bytes: imgBts,
+		bytes: imgData,
 	}
 }
 func (oth *OtherState) placeInNewSpot(id string) SpotId {
