@@ -28,3 +28,5 @@ proto:
 ollama:
 	CUDA_VISIBLE_DEVICES="" ollama serve
 
+build:
+	mkdir -p _build && go build -o ./_build/air_exe ./src/cmd/mea_client/main.go

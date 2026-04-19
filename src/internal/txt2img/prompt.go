@@ -153,10 +153,13 @@ func ImgGenSink() HtmxId {
 	return NamedId("image_sink")
 }
 
-func InvokeModal(link string) ModalDesc {
-	return ModalDesc{
-		Hid:      ModalHid(),
-		WithLink: link,
+func InvokeModal2(img2StartsWith string) internal.ActionLink {
+	var open LinkBind = PreviewOpen()
+	previewLink := open.FmtLink(img2StartsWith)
+	modalHid := ModalHid()
+	return internal.ActionLink{
+		LinkToAction: previewLink,
+		Target:       modalHid.TargName,
 	}
 }
 
@@ -396,21 +399,16 @@ func (gs *GenState) PromptInput(w http.ResponseWriter, r *http.Request) {
 }
 
 func ImgComp(idImg string) templ.Component {
-	asciiOpen := internal.PixelartHold()
-	asciiDel := internal.Pixelart()
-	var open LinkBind = PreviewOpen()
 	var del LinkBind = ImageDelete()
-
-	previewLink := open.FmtLink(idImg)
-	modalDesc := InvokeModal(previewLink)
-	forPreviewBtn := internal.ModalButton(modalDesc, asciiOpen)
-
 	aLink := internal.ActionLink{
 		LinkToAction: del.FmtLink(idImg),
 		IDName:       fmt.Sprintf("deleter_%s", idImg),
 		Target:       DeleteSinkHid().TargName,
 	}
-	delBtn := internal.ButtonAction(aLink, asciiDel)
+	aLink2 := InvokeModal2(idImg)
+	forPreviewBtn := internal.ButtonAction(aLink2, internal.PixelartHold())
+
+	delBtn := internal.ButtonAction(aLink, internal.Pixelart())
 	return internal.JustImg(imgUrl(idImg), forPreviewBtn, delBtn)
 }
 
@@ -517,7 +515,7 @@ func (gs *GenState) GenPage(w http.ResponseWriter, r *http.Request) {
 			name := spotName(x, y)
 
 			spotId := ogs.spotHolder[name]
-			fmt.Printf("- spot %s has id %s\n", name, spotId)
+			// fmt.Printf("- spot %s has id %s\n", name, spotId)
 			var choice templ.Component
 			if spotId != emptySpot {
 				choice = ImgComp(spotId)

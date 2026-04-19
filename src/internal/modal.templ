@@ -23,6 +23,12 @@ templ Modal(title string, content templ.Component, close_link string) {
                     </svg>
                 </button>
             </div>
+            {{ letters := "wsad"}}
+            <div class="flex">
+                for _, char := range letters {
+                    <div class="size-8 mr-2 p-2 rounded-sm bg-slate-800 text-slate-400">{string(char)}</div>
+                }
+            </div>
             
             <!-- Content -->
             <div class="p-6">
@@ -72,17 +78,6 @@ templ KeyDebugScript() {
     </script>
 }
 
-templ ModalButton(desc ModalDesc, inside templ.Component) {
-    <button 
-        class="px-2 py-1 bg-slate-900 text-slate-300 rounded hover:bg-slate-700 transition-colors"
-        hx-get={desc.WithLink}
-        hx-target={desc.Hid.TargName}
-        hx-swap="outerHTML"
-    >
-        @inside
-    </button>
-}
-
 templ PixelartHold() {
     <div class="font-mono text-[8px] leading-[4px]">
         <p>
@@ -100,9 +95,9 @@ templ PixelartHold() {
 templ Pixelart() {
     <div class="font-mono text-[8px] leading-[4px]">
         <p>
-              ◉●◉<br>
-             ╲...╱ <br>
-             ╲...╱ <br>
+            <br>
+             ╲. .╱ <br>
+             ╲. .╱ <br>
              ╲╲.╱╱ <br>
               ╲.╱  <br>
               ╲▁╱  <br>

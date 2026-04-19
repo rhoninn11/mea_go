@@ -3,8 +3,8 @@ testdata_dir = "testdata"
 tmp_dir = "tmp"
 
 [build]
-  cmd = "make css templ && mkdir -p build && go build -o ./build/mea_client ./src/cmd/mea_client/main.go"
-  bin = "build/mea_client"
+  cmd = "make css templ && make build"
+  bin = "_build/air_exe"
   args_bin = []
   delay = 1000
   exclude_dir = ["assets", "tmp", "fs"]
