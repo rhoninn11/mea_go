@@ -498,7 +498,7 @@ func (ps *GenState) DeleteImage(w http.ResponseWriter, r *http.Request) {
 	htmlContent(w)
 
 	// internal.ProcedeNext()
-	IdWrap(DeleteSinkHid(), internal.Block(1)).Render(r.Context(), w)
+	IdWrap(DeleteSinkHid(), internal.Entry("del")).Render(r.Context(), w)
 }
 
 // show all results and editor

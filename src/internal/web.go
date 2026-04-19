@@ -39,12 +39,11 @@ type PageOpts struct {
 }
 
 func PageWithSidebar(data PageOpts) templ.Component {
-
 	page := data.PageContent
 	sinks := data.Sinks
 	side := SideLinks(endpotins, sinks)
 	twoTabs := TwoTabs(side, page)
-	return Global("Tua editro", twoTabs)
+	return PageGlobal("Tua editro", twoTabs)
 }
 
 func NoCacheMiddleware(base http.Handler) http.Handler {

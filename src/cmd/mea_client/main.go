@@ -1,43 +1,12 @@
 package main
 
 import (
-	"context"
 	"fmt"
-	"log"
 	"mea_go/src/internal"
 	"mea_go/src/internal/translte"
 	"mea_go/src/internal/txt2img"
 	"net/http"
 )
-
-func RecivePrompt(w http.ResponseWriter, r *http.Request) {
-
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusBadRequest)
-		return
-	}
-
-	if err := r.ParseForm(); err != nil {
-		log.Fatal("empty form")
-	}
-
-	form := r.Form
-	fmt.Printf("+++ form len: %d\n", len(form))
-	for k, v := range form {
-		fmt.Println("+++", k, v)
-	}
-
-	internal.SetContentType(w, internal.ContentType_Html)
-	render := internal.Block(0)
-	render.Render(context.Background(), w)
-}
-
-// func noCacheMiddleware(base internal.HttpFunc) internal.HttpFunc {
-// 	return func(w http.ResponseWriter, r *http.Request) {
-// 		w.Header(internal.HCacheControl, no-cache)
-// 		base(w, r)
-// 	}
-// }
 
 const (
 	DEBUG = "DEBUG"

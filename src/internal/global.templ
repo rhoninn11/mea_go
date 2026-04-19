@@ -1,12 +1,16 @@
 package internal
 
 // export PATH="$PATH:$(go env GOPATH)/bin"
-templ Global(name string, body templ.Component) {
+templ PageGlobal(name string, body templ.Component) {
 	<!DOCTYPE html>
 	<html>
 		<head>
 			<script src="https://unpkg.com/htmx.org@2.0.8" 
 				integrity="sha384-/TgkGk7p307TH7EXJDuUlgG3Ce1UVolAOFopFekQkkXihi5u/6OCvVKyz1W+idaz"
+				crossorigin="anonymous">
+			</script>
+			<script src="https://cdn.jsdelivr.net/npm/htmx-ext-sse@2.2.4"
+				integrity="sha384-A986SAtodyH8eg8x8irJnYUk7i9inVQqYigD6qZ9evobksGNIXfeFvDwLSHcp31N"
 				crossorigin="anonymous">
 			</script>
 			<script src="https://cdn.jsdelivr.net/npm/htmx-ext-sse@2.2.4"
@@ -25,10 +29,6 @@ templ Global(name string, body templ.Component) {
 			@body
 		</body>
 	</html>
-}
-
-templ Block(num int) {
-	<div class="size-10 border-solid border-8 bg-slate-500">{num}</div>
 }
 
 templ SectionWithLoading() {
@@ -72,22 +72,6 @@ templ Entry(text string) {
 		{text}
 	</div>
 }
-
-templ HistoryPrint(info string) {
-	<div >
-		From template, { info }
-		@Block(0)
-	 </div>
-}
-
-templ HistoryWhole(records []string) {
-	<div>
-		for _, a := range records {
-			@HistoryPrint(a)
-		}
-	</div>
-}
-
 templ ButtonAction(openLink ActionLink, inside templ.Component) {
     <button 
         class="px-2 py-1 bg-slate-900 text-slate-300 rounded hover:bg-slate-700 transition-colors hover:scale-150"
