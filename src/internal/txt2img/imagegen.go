@@ -27,6 +27,14 @@ func (sps *SlotPromptS) init(chain []mea_gen_d.SlotedPrompt) SlotPromptS {
 	return FormPrompt(chain)
 }
 
+func (sps *SlotPromptS) textPrompts() []string {
+	out := make([]string, len(sps.Promps))
+	for i, val := range sps.Promps {
+		out[i] = val.Prompt
+	}
+	return out
+}
+
 func FormPrompt(chain []mea_gen_d.SlotedPrompt) SlotPromptS {
 	well := make([]SlotPrompt, 0, len(chain))
 	sequence := make([]string, 0, len(chain))

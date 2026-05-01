@@ -88,8 +88,12 @@ func loadOtherState(logger *log.Logger) *OtherState {
 		imgPath := strings.Join([]string{imgDir, pngfile}, "/")
 		metadataPath := strings.Join([]string{imgDir, yamlFile}, "/")
 
-		if _, err := os.Stat(metadataPath); err != nil {
-
+		metaD := emptyMetadata
+		if _, err := os.Stat(metadataPath); err == nil {
+			val, err := internal.LoadFromYAML[SlotPromptS](metadataPath)
+			if err == nil {
+				metaD.prompts = val.textPrompts()
+			}
 		}
 
 		data, err := os.ReadFile(imgPath)
@@ -97,7 +101,7 @@ func loadOtherState(logger *log.Logger) *OtherState {
 			continue
 		}
 
-		oStat.addImg(basename, data)
+		oStat.addImg(basename, data, metaD)
 	}
 
 	fmt.Print(oStat.stats.inform())
@@ -141,13 +145,13 @@ func (oth *OtherState) deleteImg(imgId ImgId) {
 	}
 
 }
-func (oth *OtherState) addImg(id string, imgData []byte) {
+func (oth *OtherState) addImg(id string, imgData []byte, metaD ImgMetadata) {
 	oth.stats.imgMemSize += int64(len(imgData))
 	oth.stats.imgNum += 1
 
 	oth.imageIds = append(oth.imageIds, id)
 	oth.imageData[id] = ImgData{
-		meta:  emptyMetadata,
+		meta:  metaD,
 		bytes: imgData,
 	}
 }

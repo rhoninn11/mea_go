@@ -195,8 +195,8 @@ func (gs *GenState) addImage(id string, gImg *image.RGBA, prompts SlotPromptS) e
 	if err != nil {
 		return fmt.Errorf("!!! failed to save | %w", err)
 	}
-
-	gs.otherState.addImg(id, pngBfr.Bytes())
+	metaD := ImgMetadata{prompts: prompts.Sequence}
+	gs.otherState.addImg(id, pngBfr.Bytes(), metaD)
 	return nil
 }
 
@@ -576,7 +576,13 @@ func (ps *GenState) PreviewOpen(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Printf("+++ opening preview for %s\n", id)
+	if v, ok := ps.otherState.imageData[id]; ok {
+		text := strings.Join(v.meta.prompts, " | ")
+		fmt.Printf("+++ some data: %s\n", text)
+	}
+
 	content := internal.BigImg(imgUrl(id))
+
 	modal := internal.Modal("preview", content, PreviewClose().EntryPoint)
 	modal.Render(r.Context(), w)
 }
