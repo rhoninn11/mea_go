@@ -59,10 +59,11 @@ func genGoFor(inProto string) {
 	servicePlug := spf("--plugin=%s/bin/protoc-gen-go-grpc", goPath)
 	fmt.Println(typesPlug)
 	fmt.Println(servicePlug)
+	outDir := "./src/api"
 	protoCompilation := []string{
 		"protoc", typesPlug, servicePlug,
-		"--go_out=./api",
-		"--go-grpc_out=./api",
+		fmt.Sprintf("--go_out=%s", outDir),
+		fmt.Sprintf("--go-grpc_out=%s", outDir),
 		inProto,
 	}
 
