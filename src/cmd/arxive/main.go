@@ -12,6 +12,7 @@ func main() {
 	msg := "trying to render pdf here"
 	fmt.Printf("hello world %s\n", internal.ColoredText(msg))
 	link := "https://arxiv.org/pdf/2510.25741"
+	checkoutThisOneAlso := "https://arxiv.org/pdf/2512.06818"
 	data, err := http.Get(link)
 	if err != nil {
 		fmt.Println(internal.ColoredText("request failed"))
