@@ -21,13 +21,14 @@ func Filename(name string, ext string) string {
 	return strings.Join([]string{name, ext}, ".")
 }
 
-func DirGuard(path string) {
+func DirGuard(path string) string {
 	if !PathExist(path) {
 		err := os.MkdirAll(path, 0775)
 		if err != nil {
 			log.Fatal(fmt.Errorf("for creating %s - %w", path, err))
 		}
 	}
+	return path
 }
 
 func JoinPath(fragments ...string) string {
