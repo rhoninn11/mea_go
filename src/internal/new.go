@@ -28,7 +28,7 @@ func RenderPdf(pdf string, here string, pageI int) error {
 	return nil
 }
 
-func CountPages(pdf string) error {
+func CountPages(pdf string) (int, error) {
 	cmd := fmt.Sprintf("mutool pages %s", pdf)
 
 	argv := strings.Split(cmd, " ")
@@ -36,7 +36,7 @@ func CountPages(pdf string) error {
 
 	data, err := cmdExec.Output()
 	if err != nil {
-		return fmt.Errorf("%s - failed | %w", ColoredText(cmd), err)
+		return 0, fmt.Errorf("%s - failed | %w", ColoredText(cmd), err)
 	}
 
 	var pageNum int
@@ -45,13 +45,12 @@ func CountPages(pdf string) error {
 		if bytes.HasPrefix(line, []byte("<page pagenum=\"")) {
 			_, err := fmt.Sscanf(string(line), "<page pagenum=\"%d\">", &pageNum)
 			if err != nil {
-				return err
+				return 0, err
 			}
 		}
 	}
 	fmt.Printf("+++ page count was: %d\n", pageNum)
-	return nil
-
+	return pageNum, nil
 }
 
 func ErrRow(err ...error) error {
