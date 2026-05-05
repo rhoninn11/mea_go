@@ -18,6 +18,8 @@ client:
 devel_up:
 	@go tool air
 
+devel_up_pages:
+	@go tool air -c .air.pages.toml
 
 build_site: templ css
 	go build -o ./tmp/main cmd/serve_site/main.go
@@ -30,3 +32,6 @@ ollama:
 
 build:
 	mkdir -p _build && go build -o ./_build/air_exe ./src/cmd/mea_client/main.go
+
+build_pages:
+	mkdir -p _build && go build -o ./_build/air_exe ./src/cmd/arxive/main.go

@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"fmt"
 	"net/http"
 )
 
@@ -24,6 +25,22 @@ type CacheType string
 type HtmxId struct {
 	JustName string
 	TargName string
+}
+
+func NamedHid(name string) HtmxId {
+	return HtmxId{
+		JustName: name,
+		TargName: fmt.Sprintf("#%s", name),
+	}
+}
+
+type LinkBind struct {
+	EntryPoint string
+	FmtStr     string
+}
+
+func (lb *LinkBind) Format(a ...any) string {
+	return fmt.Sprintf(lb.FmtStr, a...)
 }
 
 const (

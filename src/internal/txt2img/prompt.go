@@ -66,11 +66,7 @@ type FlowData struct {
 	colId string
 }
 
-type LinkBind struct {
-	Prefix     string
-	EntryPoint string
-	FmtStr     string
-}
+type LinkBind utils.LinkBind
 
 func (lb *LinkBind) FmtLink(hmm ...any) string {
 	formatedLink := fmt.Sprintf(lb.FmtStr, hmm...)
@@ -81,7 +77,6 @@ func (lb *LinkBind) FmtLink(hmm ...any) string {
 
 func PreviewOpen() LinkBind {
 	return LinkBind{
-		Prefix:     "/preview/open",
 		EntryPoint: "/preview/open/{id}",
 		FmtStr:     "/preview/open/%s",
 	}
@@ -89,14 +84,13 @@ func PreviewOpen() LinkBind {
 
 func PreviewClose() LinkBind {
 	return LinkBind{
-		Prefix:     "/preview/close",
 		EntryPoint: "/preview/close/{id}",
+		FmtStr:     "/preview/close/%s",
 	}
 }
 
 func ImageDelete() LinkBind {
 	return LinkBind{
-		Prefix:     "/prompt/img/del",
 		EntryPoint: "/prompt/img/del/{id}",
 		FmtStr:     "/prompt/img/del/%s",
 	}
@@ -104,7 +98,6 @@ func ImageDelete() LinkBind {
 
 func PromptInputLB() LinkBind {
 	return LinkBind{
-		Prefix:     "/prompt/input",
 		EntryPoint: "/prompt/input/{slot}",
 		FmtStr:     "/prompt/input/%s",
 	}
@@ -112,14 +105,12 @@ func PromptInputLB() LinkBind {
 
 func PromptTranslateInitLB() LinkBind {
 	return LinkBind{
-		Prefix:     "/prompt/translate/init",
 		EntryPoint: "/prompt/translate/init/{slot}",
 		FmtStr:     "/prompt/translate/init/%s",
 	}
 }
 func PromptTranslateLB() LinkBind {
 	return LinkBind{
-		Prefix:     "/prompt/translate",
 		EntryPoint: "/prompt/translate/{slot}",
 		FmtStr:     "/prompt/translate/%s",
 	}

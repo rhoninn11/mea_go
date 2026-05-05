@@ -31,21 +31,6 @@ templ PageGlobal(name string, body templ.Component) {
 	</html>
 }
 
-templ SectionWithLoading() {
-	<div class="flex flex-col">
-	<h2>HTMX loading demo</h2>
-	<button hx-get="/loading" hx-target="#loading-bar">
-		Loading init
-	</button>
-	<div id="loading-bar"
-		class="flex bg-slate-300"> 
-		well for "dynamic" progress using server-events
-		we need extesnion for htmx... so for now meaby just
-		use some gif indicator
-	</div>
-	</div>
-}
-
 templ TwoTabs(sideData templ.Component, mainContent templ.Component) {
 	<div class="flex">
 		<div class="w-1/4">@sideData</div>
@@ -72,6 +57,16 @@ templ Entry(text string) {
 		{text}
 	</div>
 }
+
+templ LightTextEntry(text string) {
+	<div class="text-sky-300">
+		{text}
+	</div>
+}
+
+templ Space() {
+	<div class="w-16"/>
+}
 templ ButtonAction(openLink ActionLink, inside templ.Component) {
     <button 
         class="px-2 py-1 bg-slate-900 text-slate-300 rounded hover:bg-slate-700 transition-colors hover:scale-150"
@@ -86,6 +81,9 @@ templ ButtonAction(openLink ActionLink, inside templ.Component) {
 templ JustHid(hid HtmxId){
     <div id={hid.JustName}></div>
 }
+templ HidWrap(hid HtmxId, inside templ.Component){
+    <div id={hid.JustName}>@inside</div>
+}
 
 templ ProcedeNext(action TargetAction) {
 	<div hx-trigger="load once" hx-target={action.Target} hx-get={action.LinkToAction}></div>
@@ -95,4 +93,30 @@ templ ProcedeNextVisible(action TargetAction) {
 	<div class="size-16"></div>
 	<script>console.log("++ blip ++")</script>
 	</div>
+}
+
+templ Row(comps []templ.Component) {
+    <div class="flex flex-row">
+        for _, comp := range comps {
+            @comp
+        }
+    </div>
+}
+templ RowVar(comps ...templ.Component) {
+    @Row(comps)
+}
+
+templ Col(comps []templ.Component, id string) {
+    <div class="flex flex-col items-center" id={id}>
+        for _, comp := range comps {
+            @comp
+        }
+    </div>
+}
+templ Col2(comps []templ.Component, id string) {
+    <div class="flex flex-col h-full bg-" id={id}>
+        for _, comp := range comps {
+            @comp
+        }
+    </div>
 }
