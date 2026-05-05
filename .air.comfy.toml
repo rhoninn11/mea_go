@@ -4,7 +4,7 @@ tmp_dir = "tmp"
 
 [build]
   cmd = "make css templ && make build"
-  bin = "_build/air_exe"
+  bin = "_build/mea_client"
   args_bin = []
   delay = 1000
   exclude_dir = ["assets", "tmp", "fs"]

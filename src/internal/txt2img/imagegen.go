@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	mea_gen_d "mea_go/src/api/mea.gen.d"
-	utils "mea_go/src/internal"
+	interop "mea_go/src/internal/interop"
 	"os"
 	"time"
 )
@@ -93,7 +93,7 @@ func ImageGen(gen *GenState, comfy *ComfyData) (string, error) {
 	}
 
 	yamlObj := FormPrompt(slotedPrompts)
-	gImg := utils.ImgProtoToGo(pImg)
+	gImg := interop.ImgProtoToGo(pImg)
 
 	//updating state
 	err = gen.addImage(imgBasename, gImg, yamlObj)
