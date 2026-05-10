@@ -311,8 +311,8 @@ func (gs *GenState) PromptTranslate(w http.ResponseWriter, r *http.Request) {
 		td = 200
 	}
 
-	sseContent(w)
-	internal.SetCacheControl(w, internal.CacheType_NoCache)
+	sseTypeContent(w)
+	noCacheContent(w)
 	w.Header().Set("Connection", "keep-alive")
 
 	job := translte.TranlateJob{
@@ -353,7 +353,6 @@ func (gs *GenState) PromptTranslate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (gs *GenState) PromptInput(w http.ResponseWriter, r *http.Request) {
-	var translate = PromptTranslateInitLB()
 
 	if r.Method == http.MethodPost {
 		if r.ParseForm() != nil {
@@ -362,6 +361,7 @@ func (gs *GenState) PromptInput(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		var lbTranslate = PromptTranslateInitLB()
 		for slotName, data := range r.Form {
 
 			prompt := strings.Join(data, "")
@@ -377,7 +377,7 @@ func (gs *GenState) PromptInput(w http.ResponseWriter, r *http.Request) {
 				translationHid := NamedId(fmt.Sprintf("%s_pl", slotName))
 				transAction := internal.TargetAction{
 					Target:       translationHid.TargName,
-					LinkToAction: translate.FmtLink(slotName),
+					LinkToAction: lbTranslate.FmtLink(slotName),
 				}
 				out := internal.ProcedeNextVisible(transAction)
 				// out = internal.Block(len(new))
@@ -558,8 +558,11 @@ func InformError(err error, w http.ResponseWriter) {
 func htmlContent(w http.ResponseWriter) {
 	internal.SetContentType(w, internal.ContentType_Html)
 }
-func sseContent(w http.ResponseWriter) {
+func sseTypeContent(w http.ResponseWriter) {
 	internal.SetContentType(w, internal.ContentType_EventStream)
+}
+func noCacheContent(w http.ResponseWriter) {
+	internal.SetCacheControl(w, internal.CacheType_NoCache)
 }
 
 func (ps *GenState) PreviewClose(w http.ResponseWriter, r *http.Request) {
