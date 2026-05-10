@@ -62,6 +62,7 @@ func loadOtherState(logger *log.Logger) *OtherState {
 	var imgStats = Stats{}
 
 	imgDir := internal.DirImage()
+	imgDir = internal.DirGuard(imgDir)
 
 	var oStat = OtherState{
 		imageIds:   make([]string, 0, 128),

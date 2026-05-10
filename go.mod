@@ -4,6 +4,7 @@ go 1.25
 
 require (
 	github.com/a-h/templ v0.3.898
+	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
 	github.com/ollama/ollama v0.15.5
 	golang.org/x/image v0.30.0
 	google.golang.org/grpc v1.74.2

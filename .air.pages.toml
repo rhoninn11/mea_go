@@ -3,8 +3,8 @@ testdata_dir = "testdata"
 tmp_dir = "tmp"
 
 [build]
-  cmd = "make css templ && make build"
-  bin = "_build/air_exe"
+  cmd = "make css templ && make build_arxive"
+  bin = "_build/arxive"
   args_bin = []
   delay = 1000
   exclude_dir = ["assets", "tmp", "fs"]

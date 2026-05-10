@@ -45,6 +45,12 @@ templ BigImg(imgUrl string) {
     </div>
 }
 
+templ PageImg(imgUrl string) {
+    <div class="justify-center">
+        <img src={imgUrl} class="w-[1536px] rounded">
+    </div>
+}
+
 templ FlexRow(elems []templ.Component) {
     <div class="flex">
         for _, element := range elems {

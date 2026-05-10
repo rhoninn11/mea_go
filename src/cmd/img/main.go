@@ -9,8 +9,9 @@ import (
 	"log"
 	"os"
 
+	"github.com/golang/freetype/truetype"
 	"golang.org/x/image/font"
-	"golang.org/x/image/font/inconsolata"
+	"golang.org/x/image/font/gofont/goregular"
 	"golang.org/x/image/math/fixed"
 )
 
@@ -46,19 +47,35 @@ func slot(hmm rune) image.Point {
 const lbX = 100
 const lbY = 32
 
+type TextFontFace struct {
+	Single font.Face
+}
+
+func FontConfig(size float64) TextFontFace {
+	fRegular, _ := truetype.Parse(goregular.TTF)
+	faceRegular := truetype.NewFace(fRegular, &truetype.Options{Size: size})
+
+	// faceRegular = inconsolata.Regular8x16
+	return TextFontFace{
+		Single: faceRegular,
+	}
+}
+
 // dodaj obrazek do zdjęcia
 func addLabel(img *image.RGBA, pnt fixed.Point26_6) {
-	const myStr = "jem chleb"
+
+	wrap := FontConfig(64)
+
+	const myStr = "testowy label"
 	drawer := &font.Drawer{
 		Dst:  img,
 		Src:  image.Black,
-		Face: inconsolata.Bold8x16,
+		Face: wrap.Single,
 		Dot:  pnt,
 	}
 	drawer.DrawString(myStr)
 
 	drawer.Src = image.White
-	drawer.Face = inconsolata.Regular8x16
 	drawer.Dot = pnt
 	drawer.DrawString(myStr)
 }
@@ -93,7 +110,7 @@ func main() {
 
 // save img data as png image
 func savePng(img *image.RGBA, path string) error {
-	f, err := os.Create("tmp/obraz.png")
+	f, err := os.Create("fs/imggen.png")
 	if err != nil {
 		return fmt.Errorf("creat failed for %s, %w", path, err)
 	}
