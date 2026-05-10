@@ -14,6 +14,7 @@ type ActionLink struct {
 	IDName       string
 	Target       string
 	LinkToAction string
+	Trigger      string
 }
 
 type TargetAction struct {

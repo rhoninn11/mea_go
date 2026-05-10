@@ -73,6 +73,9 @@ templ ButtonAction(openLink ActionLink, inside templ.Component) {
         hx-get={openLink.LinkToAction}
         hx-target={openLink.Target}
         hx-swap="outerHTML"
+		if openLink.Trigger != "" {
+			hx-trigger={openLink.Trigger}
+		}
     >
         @inside
     </button>

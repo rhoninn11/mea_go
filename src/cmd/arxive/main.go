@@ -6,6 +6,8 @@ import (
 	"mea_go/src/internal"
 	"net/http"
 	"os"
+	"path"
+	"strings"
 	"sync"
 
 	"github.com/a-h/templ"
@@ -13,7 +15,7 @@ import (
 
 type PdfViewer struct {
 	actualPage int
-	maxPage    int
+	lastPage   int
 	mutex      sync.RWMutex
 }
 
@@ -33,7 +35,6 @@ var reader HtmxId = internal.NamedHid("reader")
 var pageSpot HtmxId = internal.NamedHid("page_spot")
 
 func (pv *PdfViewer) PageRefresh(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("+++ page refresh hit")
 	pv.page().Render(r.Context(), w)
 }
 
@@ -52,11 +53,13 @@ func (pv *PdfViewer) ShowPage(w http.ResponseWriter, r *http.Request) {
 	prevBtn := internal.ButtonAction(internal.ActionLink{
 		Target:       actionSink.TargName,
 		LinkToAction: pageTurn.Format("prev"),
+		Trigger:      "keyup[key=='q'] from:body",
 	}, prev)
 
 	nextBtn := internal.ButtonAction(internal.ActionLink{
 		Target:       actionSink.TargName,
 		LinkToAction: pageTurn.Format("next"),
+		Trigger:      "keyup[key=='e'] from:body",
 	}, next)
 
 	content := internal.Col([]templ.Component{
@@ -79,12 +82,10 @@ func (pv *PdfViewer) TurnPage(w http.ResponseWriter, r *http.Request) {
 	val := r.PathValue("dir")
 	switch val {
 	case "next":
-		fmt.Printf("turn to next page\n")
-		if pv.actualPage < pv.maxPage {
+		if pv.actualPage < pv.lastPage {
 			pv.actualPage += 1
 		}
 	case "prev":
-		fmt.Printf("turn to prev page\n")
 		if pv.actualPage > 0 {
 			pv.actualPage -= 1
 		}
@@ -97,32 +98,26 @@ func (pv *PdfViewer) TurnPage(w http.ResponseWriter, r *http.Request) {
 	internal.HidWrap(actionSink, step).Render(r.Context(), w)
 }
 
-func main() {
-	msg := "trying to render pdf here"
-	fmt.Printf("hello world %s\n", internal.ColoredText(msg))
-	link := "https://arxiv.org/pdf/2510.25741"
-	checkoutThisOneAlso := "https://arxiv.org/pdf/2512.06818"
-	link = checkoutThisOneAlso
+func processLink(link string, renderDst string) int64 {
 	data, err := http.Get(link)
 	if err != nil {
 		fmt.Println(internal.ColoredText("request failed"))
 		os.Exit(1)
 	}
 
-	pdfile := "fs/arxiv.pdf"
-	renderDst := internal.DirGuard("fs/pdfrenders")
-
+	pdfile := path.Join(renderDst, "paper.pdf")
 	f, err := os.Create(pdfile)
 	if err != nil {
 		fmt.Printf("%s\n", internal.ColoredText("file create failed"))
 		os.Exit(1)
 	}
 
-	total, err := io.Copy(f, data.Body)
+	totalBytesFetched, err := io.Copy(f, data.Body)
 	if err != nil {
 		fmt.Printf("%s\n", internal.ColoredText("resp to file failed"))
 		os.Exit(1)
 	}
+	_ = totalBytesFetched
 	pageCount, err := internal.CountPages(pdfile)
 	if err != nil {
 		fmt.Printf("%s | %s\n", internal.ColoredText("count failed"), err.Error())
@@ -141,10 +136,32 @@ func main() {
 	}
 	wg.Wait()
 	fmt.Printf("+++ pages renderd\n")
+	return int64(pageCount)
+}
 
+func main() {
+	msg := "trying to render pdf here"
+	fmt.Printf("hello world %s\n", internal.ColoredText(msg))
+	links := []string{
+		"https://arxiv.org/pdf/2510.25741",
+		"https://arxiv.org/pdf/2512.06818",
+	}
+	var pageCount int64
+	var renderDst string
+	for _, link := range links {
+		id := strings.TrimPrefix(link, "https://arxiv.org/pdf/")
+		renderDst = internal.DirGuard(path.Join("fs", id))
+		pageCount = processLink(link, renderDst)
+		break
+	}
+
+	hostPdf(pageCount, renderDst)
+}
+
+func hostPdf(total int64, renderSrc string) {
 	addr := "localhost:8080"
 	var pv = PdfViewer{
-		maxPage: int(total),
+		lastPage: int(total - 1),
 	}
 
 	static := http.FileServer(http.Dir("static/"))
@@ -152,7 +169,7 @@ func main() {
 	static = internal.NoCacheMiddleware(static)
 	http.Handle("/static/", static)
 
-	pages := http.FileServer(http.Dir(renderDst))
+	pages := http.FileServer(http.Dir(renderSrc))
 	pages = http.StripPrefix("/pages/", pages)
 	http.Handle("/pages/", pages)
 
