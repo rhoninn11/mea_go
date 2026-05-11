@@ -132,6 +132,10 @@ func processLink(link string, renderDst string) int64 {
 				fmt.Printf("%s | %s\n", internal.ColoredText("render failed"), err.Error())
 				os.Exit(1)
 			}
+			if err := internal.XmlizePdf(pdfile, renderDst, i); err != nil {
+				fmt.Printf("%s | %s\n", internal.ColoredText("xmlization failed"), err.Error())
+				os.Exit(1)
+			}
 		}()
 	}
 	wg.Wait()

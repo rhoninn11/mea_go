@@ -15,10 +15,27 @@ func ColoredText2(text string) string {
 	return fmt.Sprintf("\033[38;5;198m%s\033[0m", text)
 }
 
+var toolCalls []string = make([]string, 0, 64)
+
 func RenderPdf(pdf string, here string, pageI int) error {
 	// sudo apt install mupdf-tools
 	oFile := path.Join(here, "strona%d.png")
 	cmd := fmt.Sprintf("mutool draw -o %s -r 300 %s %d", oFile, pdf, pageI+1)
+	toolCalls = append(toolCalls, cmd)
+
+	argv := strings.Split(cmd, " ")
+	cmdExec := exec.Command(argv[0], argv[1:]...)
+	if err := ErrRow(cmdExec.Start(), cmdExec.Wait()); err != nil {
+		return fmt.Errorf("%s - failed | %w", ColoredText(cmd), err)
+	}
+	return nil
+}
+
+func XmlizePdf(pdf string, here string, pageI int) error {
+	// sudo apt install mupdf-tools
+	oFile := path.Join(here, "strona%d.xml")
+	cmd := fmt.Sprintf("mutool draw -F stext -o %s %s %d", oFile, pdf, pageI+1)
+	toolCalls = append(toolCalls, cmd)
 
 	argv := strings.Split(cmd, " ")
 	cmdExec := exec.Command(argv[0], argv[1:]...)
