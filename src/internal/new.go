@@ -3,6 +3,7 @@ package internal
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"os/exec"
 	"path"
 	"strings"
@@ -20,6 +21,11 @@ var toolCalls []string = make([]string, 0, 64)
 func RenderPdf(pdf string, here string, pageI int) error {
 	// sudo apt install mupdf-tools
 	oFile := path.Join(here, "strona%d.png")
+	oFileReslved := fmt.Sprintf(oFile, pageI)
+	if _, err := os.Stat(oFileReslved); err == nil {
+		fmt.Printf("+++ %s already present\n", oFileReslved)
+		return nil
+	}
 	cmd := fmt.Sprintf("mutool draw -o %s -r 300 %s %d", oFile, pdf, pageI+1)
 	toolCalls = append(toolCalls, cmd)
 
@@ -34,6 +40,11 @@ func RenderPdf(pdf string, here string, pageI int) error {
 func XmlizePdf(pdf string, here string, pageI int) error {
 	// sudo apt install mupdf-tools
 	oFile := path.Join(here, "strona%d.xml")
+	oFileReslved := fmt.Sprintf(oFile, pageI)
+	if _, err := os.Stat(oFileReslved); err == nil {
+		fmt.Printf("+++ %s already present\n", oFileReslved)
+		return nil
+	}
 	cmd := fmt.Sprintf("mutool draw -F stext -o %s %s %d", oFile, pdf, pageI+1)
 	toolCalls = append(toolCalls, cmd)
 

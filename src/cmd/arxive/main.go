@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"log"
 	"mea_go/src/internal"
 	"net/http"
 	"os"
@@ -98,26 +99,33 @@ func (pv *PdfViewer) TurnPage(w http.ResponseWriter, r *http.Request) {
 	internal.HidWrap(actionSink, step).Render(r.Context(), w)
 }
 
-func processLink(link string, renderDst string) int64 {
+func fetchDocument(link string, file string) error {
 	data, err := http.Get(link)
 	if err != nil {
-		fmt.Println(internal.ColoredText("request failed"))
-		os.Exit(1)
+		return fmt.Errorf("request failed | %w", err)
 	}
 
-	pdfile := path.Join(renderDst, "paper.pdf")
-	f, err := os.Create(pdfile)
+	f, err := os.Create(file)
 	if err != nil {
-		fmt.Printf("%s\n", internal.ColoredText("file create failed"))
-		os.Exit(1)
+		return fmt.Errorf("file create failed | %w", err)
 	}
 
 	totalBytesFetched, err := io.Copy(f, data.Body)
 	if err != nil {
-		fmt.Printf("%s\n", internal.ColoredText("resp to file failed"))
-		os.Exit(1)
+		return fmt.Errorf("resp to file failed | %w", err)
 	}
 	_ = totalBytesFetched
+	fmt.Printf("+++ link %s saved ad %s\n", link, file)
+	return nil
+}
+
+func processLink(link string, renderDst string) int64 {
+	pdfile := path.Join(renderDst, "paper.pdf")
+	if _, err := os.Stat(pdfile); err != nil {
+		if err := fetchDocument(link, pdfile); err != nil {
+			log.Fatalf("%s", err.Error())
+		}
+	}
 	pageCount, err := internal.CountPages(pdfile)
 	if err != nil {
 		fmt.Printf("%s | %s\n", internal.ColoredText("count failed"), err.Error())
@@ -140,6 +148,9 @@ func processLink(link string, renderDst string) int64 {
 	}
 	wg.Wait()
 	fmt.Printf("+++ pages renderd\n")
+	file := path.Join(renderDst, "strona1.xml")
+	readDocument(loadDocument(file))
+
 	return int64(pageCount)
 }
 
@@ -156,7 +167,6 @@ func main() {
 		id := strings.TrimPrefix(link, "https://arxiv.org/pdf/")
 		renderDst = internal.DirGuard(path.Join("fs", id))
 		pageCount = processLink(link, renderDst)
-		break
 	}
 
 	hostPdf(pageCount, renderDst)
