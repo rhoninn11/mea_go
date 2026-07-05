@@ -2,11 +2,8 @@ package main
 
 import (
 	"fmt"
-	"io"
-	"log"
 	"mea_go/src/internal"
 	"net/http"
-	"os"
 	"path"
 	"strings"
 	"sync"
@@ -41,7 +38,7 @@ func (pv *PdfViewer) PageRefresh(w http.ResponseWriter, r *http.Request) {
 
 func (pv *PdfViewer) page() templ.Component {
 	pagelink := fmt.Sprintf("/pages/strona%d.png", pv.actualPage+1)
-	pdfPage := internal.PageImg(pagelink)
+	pdfPage := internal.PageImgS(pagelink)
 	return internal.HidWrap(pageSpot, pdfPage)
 }
 
@@ -99,61 +96,6 @@ func (pv *PdfViewer) TurnPage(w http.ResponseWriter, r *http.Request) {
 	internal.HidWrap(actionSink, step).Render(r.Context(), w)
 }
 
-func fetchDocument(link string, file string) error {
-	data, err := http.Get(link)
-	if err != nil {
-		return fmt.Errorf("request failed | %w", err)
-	}
-
-	f, err := os.Create(file)
-	if err != nil {
-		return fmt.Errorf("file create failed | %w", err)
-	}
-
-	totalBytesFetched, err := io.Copy(f, data.Body)
-	if err != nil {
-		return fmt.Errorf("resp to file failed | %w", err)
-	}
-	_ = totalBytesFetched
-	fmt.Printf("+++ link %s saved ad %s\n", link, file)
-	return nil
-}
-
-func processLink(link string, renderDst string) int64 {
-	pdfile := path.Join(renderDst, "paper.pdf")
-	if _, err := os.Stat(pdfile); err != nil {
-		if err := fetchDocument(link, pdfile); err != nil {
-			log.Fatalf("%s", err.Error())
-		}
-	}
-	pageCount, err := internal.CountPages(pdfile)
-	if err != nil {
-		fmt.Printf("%s | %s\n", internal.ColoredText("count failed"), err.Error())
-		os.Exit(1)
-	}
-	var wg sync.WaitGroup
-	for i := range pageCount {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			if err := internal.RenderPdf(pdfile, renderDst, i); err != nil {
-				fmt.Printf("%s | %s\n", internal.ColoredText("render failed"), err.Error())
-				os.Exit(1)
-			}
-			if err := internal.XmlizePdf(pdfile, renderDst, i); err != nil {
-				fmt.Printf("%s | %s\n", internal.ColoredText("xmlization failed"), err.Error())
-				os.Exit(1)
-			}
-		}()
-	}
-	wg.Wait()
-	fmt.Printf("+++ pages renderd\n")
-	file := path.Join(renderDst, "strona1.xml")
-	readDocument(loadDocument(file))
-
-	return int64(pageCount)
-}
-
 func main() {
 	msg := "trying to render pdf here"
 	fmt.Printf("hello world %s\n", internal.ColoredText(msg))
@@ -191,6 +133,6 @@ func hostPdf(total int64, renderSrc string) {
 	http.HandleFunc(pageTurn.EntryPoint, pv.TurnPage)
 	http.HandleFunc(pageRefresh.EntryPoint, pv.PageRefresh)
 
-	fmt.Printf("+++ listening on %s\n", internal.ColoredText(addr))
+	fmt.Printf("+++ listening on %s\n", internal.ColoredText2(addr))
 	http.ListenAndServe(addr, nil)
 }

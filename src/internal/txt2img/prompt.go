@@ -277,21 +277,28 @@ func compAsEvent(w io.Writer, evName string, comp templ.Component) error {
 	return nil
 }
 
-func (gs *GenState) PromptTranslate(w http.ResponseWriter, r *http.Request) {
+func (gs *GenState) transPrep(w http.ResponseWriter, rq *http.Request) (http.Flusher, string, error) {
+
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		InformError(fmt.Errorf("sse not supported"), w)
-		return
+		return nil, "", fmt.Errorf("sse not supported")
 	}
-	slot := r.PathValue("slot")
+	slot := rq.PathValue("slot")
 
 	slotKey, ok := SlotMapping[slot]
 	if !ok {
-		InformError(fmt.Errorf("bad slot 2"), w)
+		return nil, "", fmt.Errorf("bad slot 2")
+	}
+	prompt := gs.prompts[slotKey]
+	return flusher, prompt, nil
+}
+
+func (gs *GenState) Translator(w http.ResponseWriter, r *http.Request) {
+	flusher, prompt, err := gs.transPrep(w, r)
+	if err != nil {
+		InformError(err, w)
 		return
 	}
-
-	prompt := gs.prompts[slotKey]
 
 	// lets build prototype
 	words := strings.Split(prompt, " ")
@@ -329,7 +336,8 @@ func (gs *GenState) PromptTranslate(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	err := job.StreamedTranslateion(r.Context(), tokenChan)
+	fmt.Printf("--------- halo czy my robimy tą translację czy nie?\n")
+	err = job.StreamedTranslateion(r.Context(), tokenChan)
 	wg.Wait()
 	if err != nil {
 		InformError(fmt.Errorf("!!! translation failed | %w", err), w)
@@ -337,7 +345,6 @@ func (gs *GenState) PromptTranslate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fullText := strings.Join(fullResponse, "")
-	gs.prompts[slotKey] = fullText
 	fmt.Printf("full resonese was: %s", fullText)
 	fmt.Fprintf(w, "event: done\ndata:\n\n")
 	flusher.Flush()
@@ -599,7 +606,7 @@ func (gs *GenState) LoadFns() HttpFuncMap {
 		"/gen_page": {Fn: gs.GenPage, Show: true},
 		templ.SafeURL(PromptInputLB().EntryPoint):         {Fn: gs.PromptInput, Show: true},
 		templ.SafeURL(PromptTranslateInitLB().EntryPoint): {Fn: gs.PromptTranslateInit, Show: true},
-		templ.SafeURL(PromptTranslateLB().EntryPoint):     {Fn: gs.PromptTranslate, Show: true},
+		templ.SafeURL(PromptTranslateLB().EntryPoint):     {Fn: gs.Translator, Show: true},
 		"/prompt/commit":                         {Fn: gs.PromptCommit, Show: true},
 		"/prompt/img":                            {Fn: gs.FetchImage, Show: false},
 		templ.SafeURL(ImageDelete().EntryPoint):  {Fn: gs.DeleteImage, Show: false},
