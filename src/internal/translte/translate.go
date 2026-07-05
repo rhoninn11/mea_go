@@ -103,6 +103,7 @@ func (ts *TranlateJob) StreamedTranslateion(ctx context.Context, pipeTokensHere 
 		fmt.Println("client already set")
 	}
 
+	fmt.Printf("--------- dobra wysyłamy requesta do ollamy?\n")
 	chat := func(message string) *ollama.ChatRequest {
 		return &ollama.ChatRequest{
 			// Model: "translategemma:12b",

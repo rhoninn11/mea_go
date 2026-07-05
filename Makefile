@@ -15,6 +15,8 @@ dev: templ css client
 client:
 	go run src/cmd/mea_client/main.go	
 
+vartiants = pages comfy
+
 devel_up:
 	@go tool air -c .air.comfy.toml
 
@@ -27,7 +29,7 @@ build_site: templ css
 proto: 
 	go run src/cmd/protogen.go
 
-ollama_no_gpu:
+ollama_cpu:
 	CUDA_VISIBLE_DEVICES="" ollama serve
 
 build:

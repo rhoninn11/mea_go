@@ -12,7 +12,7 @@ func ColoredText(text string) string {
 	return fmt.Sprintf("\033[38;5;198m%s\033[0m", text)
 }
 func ColoredText2(text string) string {
-	return fmt.Sprintf("\033[38;5;198m%s\033[0m", text)
+	return fmt.Sprintf("\033[38;2;25;112;25m%s\033[0m", text)
 }
 
 var toolCalls []string = make([]string, 0, 64)

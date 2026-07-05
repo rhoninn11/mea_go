@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
-	"mea_go/internal"
+	"mea_go/src/internal"
 	"os"
 	"regexp"
 	"strings"
@@ -17,26 +17,61 @@ type RpcDesc struct {
 type ProtoTypes = []string
 type RpcDescs = []RpcDesc
 
-func parseProto(filePath string) error {
+func main() {
+	fmt.Println("dzien dobry")
+	workDir, err := os.Getwd()
+	if err != nil {
+		log.Fatal("failed to obtaine work dir")
+	}
+	fmt.Printf("+++ work dir is: %s\n", workDir)
+
+	dir := "src/api/proto"
+	dirs, err := os.ReadDir(dir)
+	if err != nil {
+		log.Fatal("error at read dir")
+	}
+
+	prots := make([]string, 0, 16)
+	for _, entry := range dirs {
+		if entry.Type().IsRegular() {
+			if strings.HasSuffix(entry.Name(), ".proto") {
+				filePath := internal.JoinPath(dir, entry.Name())
+				prots = append(prots, filePath)
+			}
+		}
+	}
+
+	for _, proto := range prots {
+		protoTypes, err := rpcReflections(proto)
+		if err != nil {
+			log.Fatalf("failed to parse %s", proto)
+		}
+
+		fmt.Printf(" %s has %d types:\n", proto, len(protoTypes))
+		fmt.Println(protoTypes)
+		fmt.Printf("\n\n")
+	}
+}
+
+func rpcReflections(filePath string) (ProtoTypes, error) {
 	content, err := os.ReadFile(filePath)
 	if err != nil {
-		return fmt.Errorf("!!! failed to read file, %v", err)
+		return nil, fmt.Errorf("!!! failed to read file, %v", err)
 	}
 
 	fmt.Println("+++ listing content of ", filePath)
 	protos, err := protoTypes(content)
 	if err != nil {
-		return fmt.Errorf("!!! type extraction failed, %v", err)
+		return nil, fmt.Errorf("!!! type extraction failed, %v", err)
 	}
 	rpcs, err := protoRpcs(content)
 	if err != nil {
-		return fmt.Errorf("!!! rpcs extraction failed, %v", err)
+		return nil, fmt.Errorf("!!! rpcs extraction failed, %v", err)
 	}
-	_ = protos
 	_ = rpcs
-	fmt.Println(protos)
-	fmt.Println(rpcs)
-	return nil
+	// fmt.Println(rpcs)
+
+	return protos, nil
 }
 
 func protoTypes(content []byte) (ProtoTypes, error) {
@@ -75,32 +110,4 @@ func protoRpcs(content []byte) (RpcDescs, error) {
 		}
 	}
 	return rpcMethods, nil
-}
-
-func main() {
-	fmt.Println("dzien dobry")
-
-	dir := "api/proto"
-	dirs, err := os.ReadDir(dir)
-	if err != nil {
-		log.Fatal("error at read dir")
-	}
-
-	prots := make([]string, 0, 16)
-	for _, entry := range dirs {
-		if entry.Type().IsRegular() {
-			if strings.HasSuffix(entry.Name(), ".proto") {
-				filePath := internal.JoinPath(dir, entry.Name())
-				prots = append(prots, filePath)
-			}
-		}
-	}
-
-	for _, proto := range prots {
-		err := parseProto(proto)
-		if err != nil {
-			log.Fatalf("failed to parse %s", proto)
-		}
-		break
-	}
 }

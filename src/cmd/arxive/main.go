@@ -2,10 +2,8 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"mea_go/src/internal"
 	"net/http"
-	"os"
 	"path"
 	"strings"
 	"sync"
@@ -40,7 +38,7 @@ func (pv *PdfViewer) PageRefresh(w http.ResponseWriter, r *http.Request) {
 
 func (pv *PdfViewer) page() templ.Component {
 	pagelink := fmt.Sprintf("/pages/strona%d.png", pv.actualPage+1)
-	pdfPage := internal.PageImg(pagelink)
+	pdfPage := internal.PageImgS(pagelink)
 	return internal.HidWrap(pageSpot, pdfPage)
 }
 
@@ -98,51 +96,6 @@ func (pv *PdfViewer) TurnPage(w http.ResponseWriter, r *http.Request) {
 	internal.HidWrap(actionSink, step).Render(r.Context(), w)
 }
 
-func processLink(link string, renderDst string) int64 {
-	data, err := http.Get(link)
-	if err != nil {
-		fmt.Println(internal.ColoredText("request failed"))
-		os.Exit(1)
-	}
-
-	pdfile := path.Join(renderDst, "paper.pdf")
-	f, err := os.Create(pdfile)
-	if err != nil {
-		fmt.Printf("%s\n", internal.ColoredText("file create failed"))
-		os.Exit(1)
-	}
-
-	totalBytesFetched, err := io.Copy(f, data.Body)
-	if err != nil {
-		fmt.Printf("%s\n", internal.ColoredText("resp to file failed"))
-		os.Exit(1)
-	}
-	_ = totalBytesFetched
-	pageCount, err := internal.CountPages(pdfile)
-	if err != nil {
-		fmt.Printf("%s | %s\n", internal.ColoredText("count failed"), err.Error())
-		os.Exit(1)
-	}
-	var wg sync.WaitGroup
-	for i := range pageCount {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			if err := internal.RenderPdf(pdfile, renderDst, i); err != nil {
-				fmt.Printf("%s | %s\n", internal.ColoredText("render failed"), err.Error())
-				os.Exit(1)
-			}
-			if err := internal.XmlizePdf(pdfile, renderDst, i); err != nil {
-				fmt.Printf("%s | %s\n", internal.ColoredText("xmlization failed"), err.Error())
-				os.Exit(1)
-			}
-		}()
-	}
-	wg.Wait()
-	fmt.Printf("+++ pages renderd\n")
-	return int64(pageCount)
-}
-
 func main() {
 	msg := "trying to render pdf here"
 	fmt.Printf("hello world %s\n", internal.ColoredText(msg))
@@ -181,6 +134,6 @@ func hostPdf(total int64, renderSrc string) {
 	http.HandleFunc(pageTurn.EntryPoint, pv.TurnPage)
 	http.HandleFunc(pageRefresh.EntryPoint, pv.PageRefresh)
 
-	fmt.Printf("+++ listening on %s\n", internal.ColoredText(addr))
+	fmt.Printf("+++ listening on %s\n", internal.ColoredText2(addr))
 	http.ListenAndServe(addr, nil)
 }
