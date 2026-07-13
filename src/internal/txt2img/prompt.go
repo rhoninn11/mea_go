@@ -525,12 +525,19 @@ func (gs *GenState) GenPage(w http.ResponseWriter, r *http.Request) {
 		}
 		col = append(col, internal.FlexRow(row))
 	}
-
-	// it will become image matrix
+	// image matrix
 	imgs := internal.FeedColumn(col, "imgs")
+
+	translateEditor := internal.FeedColumn([]templ.Component{
+		internal.LightTextEntry("new inserted component:"),
+		internal.LightTextEntry("add translate box here"),
+	}, "imgs")
+
+	imgsWithInsert := internal.RowVar(imgs, translateEditor)
+
 	mainContent := internal.FeedColumn([]templ.Component{
 		gs.PromptEditor(EditorHid()),
-		imgs,
+		imgsWithInsert,
 		internal.ModalLayer(ModalHid()),
 	}, "modal_feed")
 
