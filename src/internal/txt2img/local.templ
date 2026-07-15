@@ -48,6 +48,24 @@ templ PromptPadV2(id string, value string, link internal.TargetAction){
     </div>
 }
 
+templ TranslatePadV2(id string, value string, link internal.TargetAction){
+    {{
+        var values = []string{"none", "pl2en", "en2pl"}
+        _ = values
+    }}
+
+    <div class="flex flex-col bg-slate-600 p-4 m-1">
+        <div class="flex flex-row">
+            <textarea class="bg-slate-400 flex-1" name={id} 
+                hx-post={link.LinkToAction}
+                hx-trigger="input changed delay:1s"
+                hx-target={link.Target}>
+                {value}
+            </textarea>
+        </div>
+    </div>
+}
+
 templ PresenceBloc() {
     <div class="bg-amber-700 size-16"></div>
 }

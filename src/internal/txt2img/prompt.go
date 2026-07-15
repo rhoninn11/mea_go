@@ -103,6 +103,13 @@ func PromptInputLB() LinkBind {
 	}
 }
 
+func SinkRefil() LinkBind {
+	return LinkBind{
+		EntryPoint: "/refil/{slot}",
+		FmtStr:     "/refil/%s",
+	}
+}
+
 func PromptTranslateInitLB() LinkBind {
 	return LinkBind{
 		EntryPoint: "/prompt/translate/init/{slot}",
@@ -217,19 +224,19 @@ func (gs *GenState) PromptEditor(hid HtmxId) templ.Component {
 	var promptInput = PromptInputLB()
 
 	// dziewiąta tablica gilgameszha
-	var sink = TranslateSinkHid()
+	var sinkTrans = TranslateSinkHid()
+	var sinkGen = ImgGenSink()
+
 	padFromSlot := func(id string, slot mea_gen_d.Slot) templ.Component {
 		currPrompt := gs.prompts[slot]
-		ta := internal.TargetAction{
-			Target:       sink.TargName,
+		var action internal.TargetAction = internal.TargetAction{
+			Target:       sinkTrans.TargName,
 			LinkToAction: promptInput.FmtLink(id),
 		}
-		return PromptPadV2(id, currPrompt, ta)
+		return PromptPadV2(id, currPrompt, action)
 	}
 
-	genSink := ImgGenSink()
-	submmitBtn := GenButton(genSink)
-
+	var submmitBtn = GenButton(sinkGen)
 	editor := []templ.Component{
 		padFromSlot(SLOT_A, mea_gen_d.Slot_a),
 		padFromSlot(SLOT_B, mea_gen_d.Slot_b),
@@ -412,6 +419,17 @@ func ImgComp(idImg string) templ.Component {
 
 type TCmpt = templ.Component
 
+func (gs *GenState) SinkRefil(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "!!! commit on get", 500)
+	}
+
+	sinkHid := TranslateSinkHid()
+	internal.SetContentType(w, internal.ContentType_Html)
+	internal.JustHid(sinkHid).Render(r.Context(), w)
+
+}
+
 func (gs *GenState) PromptCommit(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "!!! commit on get", 500)
@@ -528,12 +546,18 @@ func (gs *GenState) GenPage(w http.ResponseWriter, r *http.Request) {
 	// image matrix
 	imgs := internal.FeedColumn(col, "imgs")
 
-	translateEditor := internal.FeedColumn([]templ.Component{
-		internal.LightTextEntry("new inserted component:"),
-		internal.LightTextEntry("add translate box here"),
-	}, "imgs")
+	var sink = TranslateSinkHid()
+	var sinkRefil = SinkRefil()
+	translateEditor := func() templ.Component {
+		currPrompt := "base text to translate"
+		var action internal.TargetAction = internal.TargetAction{
+			Target:       sink.TargName,
+			LinkToAction: sinkRefil.FmtLink(sink.JustName),
+		}
+		return TranslatePadV2("trans_rmp", currPrompt, action)
+	}
 
-	imgsWithInsert := internal.RowVar(imgs, translateEditor)
+	imgsWithInsert := internal.RowVar(imgs, translateEditor())
 
 	mainContent := internal.FeedColumn([]templ.Component{
 		gs.PromptEditor(EditorHid()),
@@ -619,5 +643,6 @@ func (gs *GenState) LoadFns() HttpFuncMap {
 		templ.SafeURL(ImageDelete().EntryPoint):  {Fn: gs.DeleteImage, Show: false},
 		templ.SafeURL(PreviewOpen().EntryPoint):  {Fn: gs.PreviewOpen, Show: false},
 		templ.SafeURL(PreviewClose().EntryPoint): {Fn: gs.PreviewClose, Show: false},
+		templ.SafeURL(SinkRefil().EntryPoint):    {Fn: gs.SinkRefil, Show: true},
 	}
 }
