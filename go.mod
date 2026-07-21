@@ -1,4 +1,7 @@
+
+
 module mea_go
+// should be: module mea.org/mea_go
 
 go 1.25
 

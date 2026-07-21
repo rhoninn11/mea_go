@@ -41,3 +41,6 @@ build_arxive:
 go_grpc:
 	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+
+env:
+	go run src/cmd/env/*.go
