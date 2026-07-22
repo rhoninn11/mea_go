@@ -3,9 +3,11 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 func ColoredText(text string) string {
@@ -24,7 +26,7 @@ func showEnvKyes(keys ...string) {
 
 	for _, envKeyValue := range os.Environ() {
 		kv := strings.Split(envKeyValue, "=")
-		if _, ok := keyChain[kv[0]]; ok == false {
+		if _, exist := keyChain[kv[0]]; exist == false {
 			continue
 		}
 
@@ -33,9 +35,32 @@ func showEnvKyes(keys ...string) {
 	}
 }
 
-var toShow bool = false
+func CowsayPrint(here io.Writer, msg string) error {
+	var makeErrGoBrr bytes.Buffer
+	cmd := exec.Command("cowsay", msg)
+	cmd.Stderr = &makeErrGoBrr
+	cmd.Stdout = os.Stdout
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf(
+			" run failed | %w\n----\n%s---- more info ^\n",
+			err, ColoredText(makeErrGoBrr.String()),
+		)
+	}
+
+	return nil
+}
 
 func main() {
+	msg := "Odkąd dołączyłam do \"szkoła bezczeleności\", jestem takaaaaa beszczelna"
+	var runes = []rune(msg)
+	for i := range runes {
+		if err := CowsayPrint(os.Stdout, string(runes[:i+1])); err != nil {
+			fmt.Printf("+++ jednak nie taka bezczelana | %s", err.Error())
+		}
+
+		time.Sleep(time.Millisecond * 50)
+	}
+
 	envName := "DATASET_NAME"
 	err := os.Setenv(envName, "bicycle")
 	if err != nil {
@@ -43,21 +68,5 @@ func main() {
 		os.Exit(1)
 	}
 
-	showEnvKyes(envName, "PWD")
-
-	cmd := exec.Command("make", "ollama_cpu")
-	var makeErrBfr bytes.Buffer
-	cmd.Stderr = &makeErrBfr
-	if err := cmd.Run(); err != nil {
-		fmt.Printf("!!! cmd failed to run | %s\n", err.Error())
-		fmt.Printf("---- \n%s---- more info ^\n", ColoredText(makeErrBfr.String()))
-		os.Exit(1)
-	}
-
-	if err := cmd.Wait(); err != nil {
-		fmt.Printf("+++ cmd run failed | %s", err.Error())
-		os.Exit(1)
-	}
-
-	fmt.Printf("+++ sucess\n")
+	showEnvKyes(envName, "PWD", "CUDA", "ROCM")
 }
