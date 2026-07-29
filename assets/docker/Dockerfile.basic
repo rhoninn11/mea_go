@@ -1,0 +1,16 @@
+FROM ubuntu:24.04 AS basic
+
+SHELL ["/bin/bash", "-lc"]
+
+RUN apt update && apt install -y wget
+RUN apt install -y neovim
+
+WORKDIR /exp
+
+COPY uv.sh /exp/uv.sh
+RUN source uv.sh && install "0.9.1"
+RUN source uv.sh && spawn_venv "3.11"
+RUN uv pip install tqdm
+
+COPY watcher.sh /exp/watcher.sh
+COPY simple.py /exp/simple.py

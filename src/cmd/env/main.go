@@ -2,12 +2,12 @@ package main
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"strings"
-	"time"
 )
 
 func ColoredText(text string) string {
@@ -16,7 +16,7 @@ func ColoredText(text string) string {
 
 type KeyHanger = struct{}
 
-var keyHangerInUse = struct{}{}
+var keyHangerInUse = KeyHanger{}
 
 func showEnvKyes(keys ...string) {
 	keyChain := make(map[string]KeyHanger, 8)
@@ -50,23 +50,75 @@ func CowsayPrint(here io.Writer, msg string) error {
 	return nil
 }
 
-func main() {
-	msg := "Odkąd dołączyłam do \"szkoła bezczeleności\", jestem takaaaaa beszczelna"
-	var runes = []rune(msg)
-	for i := range runes {
-		if err := CowsayPrint(os.Stdout, string(runes[:i+1])); err != nil {
-			fmt.Printf("+++ jednak nie taka bezczelana | %s", err.Error())
-		}
+const Path_Docker = "assets/docker"
 
-		time.Sleep(time.Millisecond * 50)
+func DockerTest(here io.Writer) error {
+	cmd := exec.Command("make", "python")
+	cmd.Dir = Path_Docker
+	cmd.Stderr = here
+	cmd.Stdout = here
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("fun failed | %w", err)
+	}
+
+	return nil
+}
+
+func cmdAssembly() []string {
+	cmdStr := fmt.Sprintf("docker exec -t %s_basic /bin/bash -lc", os.Getenv("USER"))
+	argv := strings.Split(cmdStr, " ")
+	argv = append(argv, "exec python simple.py")
+	return argv
+}
+
+func DockerTestAlt(here io.Writer) error {
+	argv := cmdAssembly()
+	fmt.Println(argv)
+	cmd := exec.Command(argv[0], argv[1:]...)
+	cmd.Dir = Path_Docker
+	cmd.Stderr = here
+	cmd.Stdout = here
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("alt run faile | %w", err)
+	}
+
+	fmt.Println(cmd.ProcessState.ExitCode())
+
+	return nil
+}
+
+var alt bool = false
+
+func parseArgs() {
+	flag.BoolVar(&alt, "alt", false, "run alternative function")
+	flag.Parse()
+}
+
+func main() {
+	parseArgs()
+
+	msg := "Odkąd dołączyłam do \"szkoła bezczeleności\", jestem takaaaaa beszczelna"
+	if err := CowsayPrint(os.Stdout, msg); err != nil {
+		fmt.Printf("+++ jednak nie taka bezczelana | %s", err.Error())
 	}
 
 	envName := "DATASET_NAME"
-	err := os.Setenv(envName, "bicycle")
-	if err != nil {
+	if err := os.Setenv(envName, "bicycle"); err != nil {
 		fmt.Printf("+++ failed to set env | %s", err.Error())
 		os.Exit(1)
 	}
 
-	showEnvKyes(envName, "PWD", "CUDA", "ROCM")
+	showEnvKyes(envName, "PWD", "USER")
+
+	var next = DockerTest
+
+	if alt {
+		next = DockerTestAlt
+	}
+
+	if err := next(os.Stdout); err != nil {
+		fmt.Printf("+++ docker test failed | %s", err.Error())
+		os.Exit(1)
+	}
+
 }

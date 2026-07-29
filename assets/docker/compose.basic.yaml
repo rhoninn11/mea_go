@@ -1,0 +1,12 @@
+
+services:
+  comfy_ui:
+    init: true
+    container_name: ${USER}_basic
+    image: ${USER}_basic_img
+    volumes:
+      - ../tmp/sudo_trash:/external
+
+    working_dir: /exp
+    command: /bin/bash -lc "source watcher.sh"
+ 
