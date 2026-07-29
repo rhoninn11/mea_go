@@ -52,11 +52,11 @@ func CowsayPrint(here io.Writer, msg string) error {
 
 const Path_Docker = "assets/docker"
 
-func DockerTest(here io.Writer) error {
+func DockerTest(stdout io.Writer, stderr io.Writer) error {
 	cmd := exec.Command("make", "python")
 	cmd.Dir = Path_Docker
-	cmd.Stderr = here
-	cmd.Stdout = here
+	cmd.Stderr = stderr
+	cmd.Stdout = stdout
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("fun failed | %w", err)
 	}
@@ -71,13 +71,13 @@ func cmdAssembly() []string {
 	return argv
 }
 
-func DockerTestAlt(here io.Writer) error {
+func DockerTestAlt(stdout io.Writer, stderr io.Writer) error {
 	argv := cmdAssembly()
 	fmt.Println(argv)
 	cmd := exec.Command(argv[0], argv[1:]...)
 	cmd.Dir = Path_Docker
-	cmd.Stderr = here
-	cmd.Stdout = here
+	cmd.Stderr = stderr
+	cmd.Stdout = stdout
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("alt run faile | %w", err)
 	}
@@ -92,6 +92,19 @@ var alt bool = false
 func parseArgs() {
 	flag.BoolVar(&alt, "alt", false, "run alternative function")
 	flag.Parse()
+}
+
+type CountingWriter struct {
+	w      io.Writer
+	lines  int
+	prefix string
+}
+
+func (c *CountingWriter) Write(p []byte) (int, error) {
+	n, err := c.w.Write(p)
+	delta := bytes.Count(p[:n], []byte{'\n'})
+	c.lines += delta
+	return n, err
 }
 
 func main() {
@@ -116,7 +129,9 @@ func main() {
 		next = DockerTestAlt
 	}
 
-	if err := next(os.Stdout); err != nil {
+	// cStdout := &CountingWriter{w: os.Stdout, prefix: "out"}
+	// cStderr := &CountingWriter{w: os.Stderr, prefix: "err"}
+	if err := next(os.Stdout, nil); err != nil {
 		fmt.Printf("+++ docker test failed | %s", err.Error())
 		os.Exit(1)
 	}
