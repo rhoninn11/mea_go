@@ -5,9 +5,13 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"os/exec"
+	"path"
+	"strconv"
 	"strings"
+	"time"
 )
 
 func ColoredText(text string) string {
@@ -52,27 +56,26 @@ func CowsayPrint(here io.Writer, msg string) error {
 
 const Path_Docker = "assets/docker"
 
-func DockerTest(stdout io.Writer, stderr io.Writer) error {
-	cmd := exec.Command("make", "python")
-	cmd.Dir = Path_Docker
-	cmd.Stderr = stderr
-	cmd.Stdout = stdout
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("fun failed | %w", err)
-	}
-
-	return nil
-}
-
-func cmdAssembly() []string {
-	cmdStr := fmt.Sprintf("docker exec -t %s_basic /bin/bash -lc", os.Getenv("USER"))
+func execDocker() []string {
+	cmdStr := fmt.Sprintf("docker exec %s_basic /bin/bash -lc", os.Getenv("USER"))
 	argv := strings.Split(cmdStr, " ")
 	argv = append(argv, "exec python simple.py")
 	return argv
 }
 
-func DockerTestAlt(stdout io.Writer, stderr io.Writer) error {
-	argv := cmdAssembly()
+func execMake() []string {
+	return []string{"make", "compose_t"}
+}
+
+func tqdmObserver(stdout io.Writer, stderr io.Writer, alt bool) error {
+	var argv []string
+	switch alt {
+	case true:
+		argv = execDocker()
+	case false:
+		argv = execMake()
+	}
+
 	fmt.Println(argv)
 	cmd := exec.Command(argv[0], argv[1:]...)
 	cmd.Dir = Path_Docker
@@ -87,13 +90,6 @@ func DockerTestAlt(stdout io.Writer, stderr io.Writer) error {
 	return nil
 }
 
-var alt bool = false
-
-func parseArgs() {
-	flag.BoolVar(&alt, "alt", false, "run alternative function")
-	flag.Parse()
-}
-
 type CountingWriter struct {
 	w      io.Writer
 	lines  int
@@ -105,6 +101,23 @@ func (c *CountingWriter) Write(p []byte) (int, error) {
 	delta := bytes.Count(p[:n], []byte{'\n'})
 	c.lines += delta
 	return n, err
+}
+
+var logPlace string
+
+func init() {
+	unixNs := strconv.FormatInt(time.Now().UnixMicro(), 10)
+	logPlace = path.Join("fs/logs", unixNs)
+	if err := os.MkdirAll(logPlace, 0744); err != nil {
+		log.Fatal("INIT", err)
+	}
+}
+
+var alt bool = false
+
+func parseArgs() {
+	flag.BoolVar(&alt, "alt", false, "run alternative function")
+	flag.Parse()
 }
 
 func main() {
@@ -123,15 +136,13 @@ func main() {
 
 	showEnvKyes(envName, "PWD", "USER")
 
-	var next = DockerTest
-
-	if alt {
-		next = DockerTestAlt
+	logOut, err1 := os.Create(path.Join(logPlace, "out.log"))
+	logErr, err2 := os.Create(path.Join(logPlace, "err.log"))
+	if err1 != nil || err2 != nil {
+		log.Fatal("LOGS", err1, err2)
 	}
 
-	// cStdout := &CountingWriter{w: os.Stdout, prefix: "out"}
-	// cStderr := &CountingWriter{w: os.Stderr, prefix: "err"}
-	if err := next(os.Stdout, nil); err != nil {
+	if err := tqdmObserver(logOut, logErr, alt); err != nil {
 		fmt.Printf("+++ docker test failed | %s", err.Error())
 		os.Exit(1)
 	}

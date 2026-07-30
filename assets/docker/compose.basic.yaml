@@ -1,6 +1,6 @@
 
 services:
-  comfy_ui:
+  pod:
     init: true
     container_name: ${USER}_basic
     image: ${USER}_basic_img

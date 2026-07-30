@@ -5,11 +5,11 @@ build:
 up:
 	docker compose -f compose.basic.yaml up
 
-down:
-	docker compose -f compose.basic.yaml down
-
 shell:
 	docker exec -it ${USER}_basic /bin/bash -lc
 
-python:
-	docker exec -t ${USER}_basic /bin/bash -lc "exec python simple.py"
+down:
+	docker compose -f compose.basic.yaml down
+
+compose:
+	docker compose -f compose.basic.yaml run --remove-orphans pod /bin/bash -lc "exec python simple.py"
