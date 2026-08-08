@@ -90,8 +90,8 @@ func (pv *PdfViewer) TurnPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	step := internal.ProcedeNextVisible(internal.TargetAction{
-		Target:       pageSpot.TargName,
-		LinkToAction: pageRefresh.EntryPoint,
+		Target: pageSpot.TargName,
+		LinkTo: pageRefresh.EntryPoint,
 	})
 	internal.HidWrap(actionSink, step).Render(r.Context(), w)
 }

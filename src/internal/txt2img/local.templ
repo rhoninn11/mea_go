@@ -27,19 +27,11 @@ templ PromptPadV2(id string, value string, link internal.TargetAction){
     <div class="flex flex-col bg-slate-600 p-4 m-1">
         <div class="flex flex-row">
             <textarea class="bg-slate-400 flex-1" name={id} 
-                hx-post={link.LinkToAction}
+                hx-post={link.LinkTo}
                 hx-trigger="input changed delay:1s"
                 hx-target={link.Target}>
                 {value}
             </textarea>
-        </div>
-        <div>
-            <input type="radio" id={id+"t0"} name="to_translate" value="none">
-            <label for={id+"t0"}> - </label>
-            <input type="radio" id={id+"t1"} name="to_translate" value="pl2en">
-            <label for={id+"t1"}> pl -> en </label>
-            <input type="radio" id={id+"t2"} name="to_translate" value="en2pl">
-            <label for={id+"t2"}> en -> pl </label>
         </div>
         <div id={id+"_pl"}>
             <span> </span>
@@ -54,14 +46,26 @@ templ TranslatePadV2(id string, value string, link internal.TargetAction){
         _ = values
     }}
 
+    <script> console.log("debug link: ", {{link}}) </script>
     <div class="flex flex-col bg-slate-600 p-4 m-1">
         <div class="flex flex-row">
-            <textarea class="bg-slate-400 flex-1" name={id} 
-                hx-post={link.LinkToAction}
-                hx-trigger="input changed delay:1s"
-                hx-target={link.Target}>
-                {value}
-            </textarea>
+            <div class="flex flex-col">
+                <textarea class="bg-slate-400 flex-1 h-20" name={id} 
+                    hx-post={link.LinkTo}
+                    hx-trigger="input changed delay:1s"
+                    hx-target={link.Target}>
+                    {value}
+                </textarea>
+                <div class="flex flex-row">
+                        for _ = range 6 {
+                            <div class="size-6 bg-slate-900 mr-1"></div> 
+                        }
+                        <div class="size-6 bg-slate-900"></div> 
+                </div>
+                <textarea class="bg-slate-400 flex-1 h-20" name={id}>
+                    {value}
+                </textarea>
+            </div>
         </div>
     </div>
 }

@@ -47,6 +47,7 @@ templ SideLinks(links []templ.SafeURL, sinks []HtmxId){
 		}
 		<div>
 		for _, sink := range sinks {
+			<script>console.log("placeing sink: ",{{sink}})</script>
 			@JustHid(sink)
 		}
 		</div>	
@@ -89,10 +90,10 @@ templ HidWrap(hid HtmxId, inside templ.Component){
 }
 
 templ ProcedeNext(action TargetAction) {
-	<div hx-trigger="load once" hx-target={action.Target} hx-get={action.LinkToAction}></div>
+	<div hx-trigger="load once" hx-target={action.Target} hx-get={action.LinkTo}></div>
 }
 templ ProcedeNextVisible(action TargetAction) {
-	<div hx-trigger="load once" hx-target={action.Target} hx-get={action.LinkToAction}>
+	<div hx-trigger="load once" hx-target={action.Target} hx-get={action.LinkTo}>
 	<div class="size-16"></div>
 	<script>console.log("++ blip ++")</script>
 	</div>

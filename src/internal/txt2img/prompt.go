@@ -105,7 +105,7 @@ func PromptInputLB() LinkBind {
 
 func SinkRefil() LinkBind {
 	return LinkBind{
-		EntryPoint: "/refil/{slot}",
+		EntryPoint: "/refil/{sink_name}",
 		FmtStr:     "/refil/%s",
 	}
 }
@@ -149,6 +149,10 @@ func TranslateSinkHid() HtmxId {
 }
 func ImgGenSink() HtmxId {
 	return NamedId("image_sink")
+}
+
+func CommonSinks() []HtmxId {
+	return []HtmxId{ImgGenSink(), DeleteSinkHid(), TranslateSinkHid()}
 }
 
 func InvokeModal2(img2StartsWith string) internal.ActionLink {
@@ -230,8 +234,8 @@ func (gs *GenState) PromptEditor(hid HtmxId) templ.Component {
 	padFromSlot := func(id string, slot mea_gen_d.Slot) templ.Component {
 		currPrompt := gs.prompts[slot]
 		var action internal.TargetAction = internal.TargetAction{
-			Target:       sinkTrans.TargName,
-			LinkToAction: promptInput.FmtLink(id),
+			Target: sinkTrans.TargName,
+			LinkTo: promptInput.FmtLink(id),
 		}
 		return PromptPadV2(id, currPrompt, action)
 	}
@@ -381,8 +385,8 @@ func (gs *GenState) PromptInput(w http.ResponseWriter, r *http.Request) {
 
 				translationHid := NamedId(fmt.Sprintf("%s_pl", slotName))
 				transAction := internal.TargetAction{
-					Target:       translationHid.TargName,
-					LinkToAction: lbTranslate.FmtLink(slotName),
+					Target: translationHid.TargName,
+					LinkTo: lbTranslate.FmtLink(slotName),
 				}
 				out := internal.ProcedeNextVisible(transAction)
 				// out = internal.Block(len(new))
@@ -411,7 +415,8 @@ func ImgComp(idImg string) templ.Component {
 		Target:       DeleteSinkHid().TargName,
 	}
 	aLink2 := InvokeModal2(idImg)
-	forPreviewBtn := internal.ButtonAction(aLink2, internal.PixelartHold())
+	// forPreviewBtn := internal.ButtonAction(aLink2, internal.PixelartHold())
+	forPreviewBtn := internal.ButtonAction(aLink2, internal.UnicodeArt())
 
 	delBtn := internal.ButtonAction(aLink, internal.Pixelart())
 	return internal.JustImg(imgUrl(idImg), forPreviewBtn, delBtn)
@@ -420,17 +425,22 @@ func ImgComp(idImg string) templ.Component {
 type TCmpt = templ.Component
 
 func (gs *GenState) SinkRefil(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "!!! commit on get", 500)
+	if r.Method != http.MethodPost {
+		http.Error(w, "!!! accepts only post", 500)
+		return
 	}
 
 	sinkHid := TranslateSinkHid()
+	if sinkHid.JustName != r.PathValue("sink_name") {
+		http.Error(w, "!!! name missmatch", 500)
+		return
+	}
 	internal.SetContentType(w, internal.ContentType_Html)
 	internal.JustHid(sinkHid).Render(r.Context(), w)
-
 }
 
 func (gs *GenState) PromptCommit(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("how?\n")
 	if r.Method != http.MethodGet {
 		http.Error(w, "!!! commit on get", 500)
 	}
@@ -517,6 +527,19 @@ func (ps *GenState) DeleteImage(w http.ResponseWriter, r *http.Request) {
 	IdWrap(DeleteSinkHid(), internal.Entry("del")).Render(r.Context(), w)
 }
 
+func translateSpot() templ.Component {
+	var sinkT = TranslateSinkHid()
+	var sinkR = SinkRefil()
+
+	currPrompt := "base text to translate"
+	var action internal.TargetAction = internal.TargetAction{
+		LinkTo: sinkR.FmtLink(sinkT.JustName),
+		Target: sinkT.TargName,
+	}
+	fmt.Printf("+++ given %s link\n", action.LinkTo)
+	return TranslatePadV2("trans_rmp", currPrompt, action)
+}
+
 // show all results and editor
 func (gs *GenState) GenPage(w http.ResponseWriter, r *http.Request) {
 	internal.SetContentType(w, internal.ContentType_Html)
@@ -545,19 +568,8 @@ func (gs *GenState) GenPage(w http.ResponseWriter, r *http.Request) {
 	}
 	// image matrix
 	imgs := internal.FeedColumn(col, "imgs")
-
-	var sink = TranslateSinkHid()
-	var sinkRefil = SinkRefil()
-	translateEditor := func() templ.Component {
-		currPrompt := "base text to translate"
-		var action internal.TargetAction = internal.TargetAction{
-			Target:       sink.TargName,
-			LinkToAction: sinkRefil.FmtLink(sink.JustName),
-		}
-		return TranslatePadV2("trans_rmp", currPrompt, action)
-	}
-
-	imgsWithInsert := internal.RowVar(imgs, translateEditor())
+	var toTranslate = translateSpot()
+	imgsWithInsert := internal.RowVar(toTranslate, imgs)
 
 	mainContent := internal.FeedColumn([]templ.Component{
 		gs.PromptEditor(EditorHid()),
@@ -567,11 +579,7 @@ func (gs *GenState) GenPage(w http.ResponseWriter, r *http.Request) {
 
 	var opts = internal.PageOpts{
 		PageContent: mainContent,
-		Sinks: []HtmxId{
-			DeleteSinkHid(),
-			TranslateSinkHid(),
-			ImgGenSink(),
-		},
+		Sinks:       CommonSinks(),
 	}
 	wholePage := internal.PageWithSidebar(opts)
 	wholePage.Render(context.Background(), w)
