@@ -11,5 +11,8 @@ shell:
 down:
 	docker compose -f compose.basic.yaml down
 
-compose:
+compose_run:
 	docker compose -f compose.basic.yaml run --remove-orphans pod /bin/bash -lc "exec python simple.py"
+
+ollama:
+	ollama serve

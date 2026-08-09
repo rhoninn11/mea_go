@@ -54,26 +54,23 @@ func CowsayPrint(here io.Writer, msg string) error {
 	return nil
 }
 
-const Path_Docker = "assets/docker"
+const Path_Docker = "assets/in_docker_env"
 
-func execDocker() []string {
-	cmdStr := fmt.Sprintf("docker exec %s_basic /bin/bash -lc", os.Getenv("USER"))
-	argv := strings.Split(cmdStr, " ")
-	argv = append(argv, "exec python simple.py")
-	return argv
+func cmdOllamaServe() []string {
+	return []string{"make", "ollama"}
 }
 
-func execMake() []string {
-	return []string{"make", "compose_t"}
+func cmdComposeRun() []string {
+	return []string{"make", "compose_run"}
 }
 
 func tqdmObserver(stdout io.Writer, stderr io.Writer, alt bool) error {
 	var argv []string
 	switch alt {
 	case true:
-		argv = execDocker()
+		argv = cmdComposeRun()
 	case false:
-		argv = execMake()
+		argv = cmdOllamaServe()
 	}
 
 	fmt.Println(argv)
@@ -85,7 +82,11 @@ func tqdmObserver(stdout io.Writer, stderr io.Writer, alt bool) error {
 		return fmt.Errorf("alt run faile | %w", err)
 	}
 
-	fmt.Println(cmd.ProcessState.ExitCode())
+	var eCode = cmd.ProcessState.ExitCode()
+	if eCode != 0 {
+		fmt.Println("exit code was: ", cmd.ProcessState.ExitCode())
+		return fmt.Errorf("command exec failed with code %d", eCode)
+	}
 
 	return nil
 }

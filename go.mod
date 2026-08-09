@@ -1,14 +1,14 @@
-
-
 module mea_go
+
 // should be: module mea.org/mea_go
 
-go 1.25
+go 1.25.0
 
 require (
 	github.com/a-h/templ v0.3.898
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
 	github.com/ollama/ollama v0.15.5
+	github.com/openai/openai-go/v3 v3.50.0
 	golang.org/x/image v0.30.0
 	google.golang.org/grpc v1.74.2
 	google.golang.org/protobuf v1.36.8
@@ -41,14 +41,18 @@ require (
 	github.com/spf13/afero v1.14.0 // indirect
 	github.com/spf13/cast v1.9.2 // indirect
 	github.com/tdewolff/parse/v2 v2.8.3 // indirect
+	github.com/tidwall/gjson v1.19.0 // indirect
+	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/pretty v1.2.1 // indirect
+	github.com/tidwall/sjson v1.2.5 // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
-	golang.org/x/crypto v0.43.0 // indirect
-	golang.org/x/mod v0.30.0 // indirect
-	golang.org/x/net v0.46.0 // indirect
-	golang.org/x/sync v0.17.0 // indirect
-	golang.org/x/sys v0.37.0 // indirect
-	golang.org/x/text v0.30.0 // indirect
-	golang.org/x/tools v0.38.0 // indirect
+	golang.org/x/crypto v0.54.0 // indirect
+	golang.org/x/mod v0.37.0 // indirect
+	golang.org/x/net v0.57.0 // indirect
+	golang.org/x/sync v0.22.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/text v0.40.0 // indirect
+	golang.org/x/tools v0.47.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250818200422-3122310a409c // indirect
 )
 
