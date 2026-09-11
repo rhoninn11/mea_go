@@ -17,6 +17,8 @@ func main() {
 	}
 }
 
+const cmd = "/llama-server --port 8080 --host 0.0.0.0 -lv 3 -ngl 99 -c 65536 --temp 1.0 --top-p 0.95 --top-k 20 --min-p 0.00 -fa on -m ../gguf/Qwen3.8-27B-UD-Q3_K_XL.gguf"
+
 var apiLink = "http://0.0.0.0:8080/v1"
 
 func submain() error {
